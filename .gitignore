@@ -1,0 +1,4 @@
+# Local safety copies — kept on disk, not published to the public repo.
+# (Git history itself preserves every committed version of the game.)
+backups/
+*.zip

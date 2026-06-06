@@ -1,0 +1,2143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>WASTELAND ZERO — Survival RPG</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
+body{background:#0a0a0a;font-family:'Courier New',monospace;overflow:hidden;width:100vw;height:100vh;touch-action:none}
+canvas{display:block;image-rendering:pixelated}
+#gameContainer{position:relative;width:100vw;height:100vh;overflow:hidden}
+
+/* TITLE SCREEN */
+#titleScreen{position:absolute;inset:0;background:#0a0a0a;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100}
+#titleScreen canvas{position:absolute;inset:0;width:100%;height:100%}
+.title-content{position:relative;z-index:2;text-align:center;padding:20px}
+.title-logo{font-size:clamp(28px,6vw,56px);font-weight:900;letter-spacing:6px;color:#ff4400;text-shadow:0 0 30px #ff4400,0 0 60px #ff2200;font-family:'Courier New',monospace;line-height:1}
+.title-sub{font-size:clamp(10px,2vw,14px);color:#888;letter-spacing:8px;margin:8px 0 40px;text-transform:uppercase}
+.title-btn{background:transparent;border:2px solid #ff4400;color:#ff4400;padding:14px 40px;font-family:'Courier New',monospace;font-size:clamp(12px,2.5vw,16px);letter-spacing:4px;cursor:pointer;text-transform:uppercase;transition:all .2s;margin:6px}
+.title-btn:hover,.title-btn:active{background:#ff4400;color:#000}
+.title-version{position:absolute;bottom:20px;color:#333;font-size:11px;letter-spacing:2px}
+
+/* HUD */
+#hud{position:absolute;inset:0;pointer-events:none;z-index:20}
+#topHud{position:absolute;top:0;left:0;right:0;padding:8px 10px;display:flex;align-items:flex-start;gap:8px;background:linear-gradient(to bottom,rgba(0,0,0,.85),transparent)}
+.stat-bars{display:flex;flex-direction:column;gap:3px;flex:1;max-width:220px}
+.stat-row{display:flex;align-items:center;gap:5px}
+.stat-icon{font-size:11px;width:16px;text-align:center;color:#aaa}
+.stat-bar-bg{flex:1;height:8px;background:rgba(255,255,255,.1);border-radius:1px;overflow:hidden}
+.stat-bar-fill{height:100%;border-radius:1px;transition:width .3s}
+.bar-hp{background:#e53e3e}
+.bar-hunger{background:#ed8936}
+.bar-thirst{background:#4299e1}
+.bar-stamina{background:#48bb78}
+.bar-rad{background:#9f7aea}
+.stat-val{font-size:9px;color:#aaa;width:26px;text-align:right}
+
+#levelBadge{background:rgba(0,0,0,.8);border:1px solid #ff4400;padding:4px 8px;text-align:center;min-width:52px}
+#levelBadge .lv-label{font-size:8px;color:#ff4400;letter-spacing:2px}
+#levelBadge .lv-num{font-size:18px;font-weight:900;color:#fff;line-height:1}
+#xpBar{height:3px;background:#333;margin-top:2px}
+#xpFill{height:100%;background:#ff4400;width:0%;transition:width .4s}
+
+#timeWeather{position:absolute;top:10px;right:10px;text-align:right;font-size:10px;color:#aaa;line-height:1.6}
+#timeWeather .time-display{font-size:16px;color:#ddd;font-weight:bold;letter-spacing:2px}
+
+#minimap{position:absolute;top:10px;right:10px;width:90px;height:90px;border:1px solid rgba(255,68,0,.5);background:rgba(0,0,0,.7);display:none}
+
+#notifications{position:absolute;top:60px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:4px;pointer-events:none;z-index:50;width:80%;max-width:360px}
+.notif{background:rgba(0,0,0,.9);border-left:3px solid #ff4400;padding:6px 12px;font-size:11px;color:#ddd;letter-spacing:1px;animation:notifIn .2s ease,notifOut .4s ease 2.6s forwards;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+@keyframes notifIn{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes notifOut{to{opacity:0;transform:translateY(-10px)}}
+.notif.notif-good{border-color:#48bb78}
+.notif.notif-warn{border-color:#ed8936}
+.notif.notif-xp{border-color:#9f7aea}
+.notif.notif-loot{border-color:#f6e05e}
+
+/* BOTTOM HUD */
+#bottomHud{position:absolute;bottom:0;left:0;right:0;pointer-events:all}
+
+/* Hotbar */
+#hotbar{display:flex;justify-content:center;gap:6px;padding:8px;background:linear-gradient(to top,rgba(0,0,0,.9),transparent)}
+.hotslot{width:52px;height:52px;border:1px solid rgba(255,255,255,.2);background:rgba(0,0,0,.6);display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:18px;position:relative;border-radius:4px;flex-shrink:0}
+.hotslot.active{border-color:#ff4400;background:rgba(255,68,0,.15)}
+.hotslot .item-count{position:absolute;bottom:2px;right:4px;font-size:9px;color:#aaa}
+.hotslot .slot-num{position:absolute;top:2px;left:4px;font-size:8px;color:#555}
+.hotslot .item-name{font-size:7px;color:#888;position:absolute;bottom:2px;left:0;right:0;text-align:center;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;padding:0 2px}
+
+/* Touch Controls */
+#controls{position:absolute;bottom:80px;left:0;right:0;display:flex;justify-content:space-between;align-items:flex-end;padding:0 16px;pointer-events:all}
+#joystickZone{width:120px;height:120px;position:relative}
+#joystickOuter{width:100%;height:100%;border-radius:50%;border:2px solid rgba(255,255,255,.15);background:rgba(0,0,0,.3);position:relative}
+#joystickInner{width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.25);border:1px solid rgba(255,255,255,.4);position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);transition:all .05s}
+#actionBtns{display:flex;flex-direction:column;gap:6px;align-items:flex-end}
+.act-btn{width:54px;height:54px;border-radius:50%;border:2px solid rgba(255,255,255,.3);background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;font-size:11px;color:#ddd;text-align:center;line-height:1.2;letter-spacing:.5px;pointer-events:all;cursor:pointer;transition:all .1s}
+.act-btn:active{transform:scale(.9);background:rgba(255,255,255,.15)}
+.act-btn.btn-attack{border-color:#e53e3e;background:rgba(229,62,62,.15)}
+.act-btn.btn-attack:active{background:rgba(229,62,62,.4)}
+.act-btn.btn-loot{border-color:#f6e05e;background:rgba(246,224,94,.1)}
+.act-btn.btn-craft{border-color:#48bb78;background:rgba(72,187,120,.1)}
+.act-btn.btn-use{border-color:#4299e1;background:rgba(66,153,225,.1)}
+#secondaryBtns{position:absolute;bottom:80px;left:140px;display:flex;flex-direction:column;gap:5px}
+.sec-btn{padding:5px 10px;border:1px solid rgba(255,255,255,.2);background:rgba(0,0,0,.6);font-size:9px;color:#aaa;letter-spacing:1px;text-transform:uppercase;border-radius:3px;pointer-events:all;cursor:pointer;white-space:nowrap}
+.sec-btn:active{background:rgba(255,255,255,.1)}
+
+/* PANELS */
+.panel{position:absolute;inset:0;background:rgba(0,0,0,.95);z-index:30;display:none;flex-direction:column;overflow:hidden}
+.panel.open{display:flex}
+.panel-header{padding:12px 16px;border-bottom:1px solid rgba(255,68,0,.3);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.panel-title{font-size:14px;color:#ff4400;letter-spacing:3px;text-transform:uppercase}
+.close-btn{background:transparent;border:1px solid #555;color:#aaa;width:28px;height:28px;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;border-radius:2px}
+.panel-body{flex:1;overflow-y:auto;padding:10px;-webkit-overflow-scrolling:touch}
+.panel-tabs{display:flex;border-bottom:1px solid #222;flex-shrink:0}
+.tab-btn{flex:1;padding:8px;text-align:center;font-size:10px;color:#555;letter-spacing:1px;text-transform:uppercase;cursor:pointer;border-bottom:2px solid transparent;font-family:'Courier New',monospace}
+.tab-btn.active{color:#ff4400;border-bottom-color:#ff4400}
+
+/* Inventory */
+.inv-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:6px}
+.inv-slot{border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.03);padding:6px;text-align:center;border-radius:3px;cursor:pointer;transition:all .15s;min-height:70px;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative}
+.inv-slot:hover,.inv-slot:active{border-color:#ff4400;background:rgba(255,68,0,.1)}
+.inv-slot .item-emoji{font-size:22px;line-height:1}
+.inv-slot .item-name{font-size:8px;color:#aaa;margin-top:3px;line-height:1.2;text-align:center}
+.inv-slot .item-qty{position:absolute;top:3px;right:5px;font-size:9px;color:#ff4400}
+.inv-slot .item-rarity{position:absolute;bottom:0;left:0;right:0;height:2px}
+.rarity-common{background:#666}
+.rarity-uncommon{background:#48bb78}
+.rarity-rare{background:#4299e1}
+.rarity-epic{background:#9f7aea}
+.rarity-legendary{background:#f6e05e}
+.empty-slot{opacity:.3}
+
+/* Crafting */
+.craft-item{border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.03);padding:10px;margin-bottom:6px;border-radius:3px;cursor:pointer;display:flex;align-items:center;gap:10px}
+.craft-item:hover,.craft-item:active{border-color:#48bb78;background:rgba(72,187,120,.05)}
+.craft-item.locked{opacity:.4;cursor:not-allowed}
+.craft-icon{font-size:24px;width:36px;text-align:center}
+.craft-info{flex:1;min-width:0}
+.craft-name{font-size:11px;color:#ddd;font-weight:bold}
+.craft-reqs{font-size:9px;color:#666;margin-top:2px;line-height:1.4}
+.craft-reqs .has{color:#48bb78}
+.craft-reqs .lacks{color:#e53e3e}
+.craft-btn{padding:6px 10px;background:#48bb78;color:#000;border:none;font-size:9px;letter-spacing:1px;cursor:pointer;border-radius:2px;flex-shrink:0;font-family:'Courier New',monospace}
+.craft-btn:disabled{background:#333;color:#555;cursor:not-allowed}
+
+/* Map */
+#mapPanel{background:#0a0a0a}
+#mapCanvas{display:block;width:100%;cursor:crosshair}
+.map-legend{padding:8px 10px;display:flex;flex-wrap:wrap;gap:6px 12px;border-top:1px solid #222;flex-shrink:0}
+.legend-item{display:flex;align-items:center;gap:4px;font-size:9px;color:#666}
+.legend-dot{width:8px;height:8px;border-radius:50%}
+
+/* Mission Board */
+.quest-item{border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.02);padding:10px;margin-bottom:6px;border-radius:3px}
+.quest-title{font-size:12px;color:#ddd;margin-bottom:4px}
+.quest-desc{font-size:9px;color:#666;line-height:1.4;margin-bottom:6px}
+.quest-reward{font-size:9px;color:#f6e05e}
+.quest-type{font-size:8px;padding:2px 6px;border-radius:2px;display:inline-block;margin-bottom:4px;letter-spacing:1px}
+.qt-story{background:rgba(229,62,62,.15);color:#e53e3e}
+.qt-side{background:rgba(66,153,225,.15);color:#4299e1}
+.qt-daily{background:rgba(72,187,120,.15);color:#48bb78}
+.quest-progress{height:3px;background:#222;margin-top:6px;border-radius:1px;overflow:hidden}
+.quest-prog-fill{height:100%;background:#ff4400}
+
+/* Bunker */
+.bunker-upgrade{border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.02);padding:10px;margin-bottom:6px;border-radius:3px;display:flex;align-items:center;gap:10px}
+.bunker-icon{font-size:28px;width:40px;text-align:center}
+.bunker-info{flex:1}
+.bunker-name{font-size:11px;color:#ddd;font-weight:bold}
+.bunker-level{font-size:9px;color:#666;margin:2px 0}
+.upgrade-btn{padding:6px 10px;background:transparent;border:1px solid #ff4400;color:#ff4400;font-size:9px;letter-spacing:1px;cursor:pointer;border-radius:2px;font-family:'Courier New',monospace;white-space:nowrap}
+.upgrade-btn:disabled{border-color:#333;color:#333;cursor:not-allowed}
+
+/* World events */
+#worldEvent{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.95);border:2px solid #ff4400;padding:16px 20px;text-align:center;z-index:60;display:none;min-width:240px;max-width:320px}
+#worldEvent .event-title{font-size:14px;color:#ff4400;letter-spacing:3px;margin-bottom:8px;text-transform:uppercase}
+#worldEvent .event-desc{font-size:10px;color:#aaa;line-height:1.6;margin-bottom:12px}
+#worldEvent .event-choices{display:flex;flex-direction:column;gap:6px}
+.event-choice{padding:8px 12px;border:1px solid rgba(255,255,255,.2);background:transparent;color:#ddd;font-size:10px;letter-spacing:1px;cursor:pointer;text-align:left;font-family:'Courier New',monospace}
+.event-choice:active{background:rgba(255,255,255,.1)}
+
+/* Combat flash */
+#hitFlash{position:absolute;inset:0;background:rgba(255,0,0,.25);pointer-events:none;opacity:0;z-index:15;transition:opacity .1s}
+#lootFlash{position:absolute;inset:0;background:rgba(246,224,94,.1);pointer-events:none;opacity:0;z-index:15;transition:opacity .1s}
+
+/* Level up */
+#levelUp{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;z-index:70;display:none;pointer-events:none}
+#levelUp .lu-title{font-size:clamp(24px,5vw,40px);color:#ff4400;font-weight:900;letter-spacing:4px;text-shadow:0 0 20px #ff4400;animation:pulse 1s ease infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
+#levelUp .lu-text{font-size:12px;color:#aaa;letter-spacing:3px;margin-top:4px}
+
+/* Desktop keyboard indicator */
+#desktopHint{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);font-size:9px;color:#333;letter-spacing:1px;pointer-events:none;white-space:nowrap}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:#0a0a0a}
+::-webkit-scrollbar-thumb{background:#333}
+
+/* Loot popup */
+#lootPopup{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.95);border:1px solid rgba(255,255,255,.2);padding:14px 18px;z-index:55;display:none;min-width:220px;max-width:300px;max-height:80vh;overflow-y:auto}
+#lootPopup .loot-title{font-size:12px;color:#f6e05e;letter-spacing:2px;margin-bottom:8px;text-transform:uppercase}
+.loot-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #1a1a1a;font-size:10px;color:#aaa}
+.loot-row:last-child{border-bottom:none}
+.loot-row .loot-icon{font-size:18px;width:24px;text-align:center}
+.loot-close-btn{margin-top:10px;width:100%;padding:8px;border:1px solid #555;background:transparent;color:#aaa;font-size:10px;letter-spacing:2px;cursor:pointer;font-family:'Courier New',monospace;text-transform:uppercase}
+
+/* Responsive for desktop */
+@media(min-width:768px){
+  #joystickZone{width:130px;height:130px}
+  .act-btn{width:60px;height:60px}
+  #desktopHint{display:block}
+}
+</style>
+</head>
+<body>
+<div id="gameContainer">
+  <canvas id="gameCanvas"></canvas>
+  
+  <!-- Title Screen -->
+  <div id="titleScreen">
+    <canvas id="bgCanvas"></canvas>
+    <div class="title-content">
+      <div class="title-logo">WASTELAND<br>ZERO</div>
+      <div class="title-sub">Survival RPG</div>
+      <button class="title-btn" onclick="startGame()">▶ NEW GAME</button>
+      <button class="title-btn" onclick="loadGame()">⟳ CONTINUE</button>
+      <p style="font-size:9px;color:#333;margin-top:20px;letter-spacing:1px">WASD/Arrows or Joystick to move • Z/Attack Btn to fight • X/Loot to scavenge</p>
+    </div>
+    <div class="title-version">V 1.0 — WASTELAND ZERO</div>
+  </div>
+
+  <!-- HUD -->
+  <div id="hud" style="display:none">
+    <div id="topHud">
+      <div class="stat-bars">
+        <div class="stat-row"><span class="stat-icon">❤</span><div class="stat-bar-bg"><div class="stat-bar-fill bar-hp" id="barHp" style="width:100%"></div></div><span class="stat-val" id="valHp">100</span></div>
+        <div class="stat-row"><span class="stat-icon">🍖</span><div class="stat-bar-bg"><div class="stat-bar-fill bar-hunger" id="barHunger" style="width:100%"></div></div><span class="stat-val" id="valHunger">100</span></div>
+        <div class="stat-row"><span class="stat-icon">💧</span><div class="stat-bar-bg"><div class="stat-bar-fill bar-thirst" id="barThirst" style="width:100%"></div></div><span class="stat-val" id="valThirst">100</span></div>
+        <div class="stat-row"><span class="stat-icon">⚡</span><div class="stat-bar-bg"><div class="stat-bar-fill bar-stamina" id="barStamina" style="width:100%"></div></div><span class="stat-val" id="valStamina">100</span></div>
+        <div class="stat-row"><span class="stat-icon" style="color:#9f7aea">☢</span><div class="stat-bar-bg"><div class="stat-bar-fill bar-rad" id="barRad" style="width:0%"></div></div><span class="stat-val" id="valRad">0</span></div>
+      </div>
+      <div id="levelBadge">
+        <div class="lv-label">LVL</div>
+        <div class="lv-num" id="lvNum">1</div>
+        <div id="xpBar"><div id="xpFill"></div></div>
+      </div>
+      <div id="timeWeather">
+        <div class="time-display" id="gameTime">06:00</div>
+        <div id="weatherDisplay" style="font-size:9px">☀ CLEAR</div>
+        <div id="dayDisplay" style="font-size:9px;color:#555">DAY 1</div>
+      </div>
+    </div>
+
+    <div id="notifications"></div>
+    <div id="hitFlash"></div>
+    <div id="lootFlash"></div>
+
+    <!-- Hotbar -->
+    <div id="bottomHud">
+      <div id="hotbar">
+        <div class="hotslot active" id="slot0" onclick="selectHotslot(0)"><span class="slot-num">1</span><span id="hs0">🪓</span><span class="item-name" id="hn0">Hatchet</span></div>
+        <div class="hotslot" id="slot1" onclick="selectHotslot(1)"><span class="slot-num">2</span><span id="hs1">🔫</span><span class="item-name" id="hn1">Pistol</span></div>
+        <div class="hotslot" id="slot2" onclick="selectHotslot(2)"><span class="slot-num">3</span><span id="hs2">🧪</span><span class="item-name" id="hn2">Medkit</span></div>
+        <div class="hotslot" id="slot3" onclick="selectHotslot(3)"><span class="slot-num">4</span><span id="hs3">🍞</span><span class="item-name" id="hn3">Food</span></div>
+        <div class="hotslot" id="slot4" onclick="selectHotslot(4)"><span class="slot-num">5</span><span id="hs4">💧</span><span class="item-name" id="hn4">Water</span></div>
+      </div>
+      <div id="controls">
+        <div id="joystickZone">
+          <div id="joystickOuter"><div id="joystickInner"></div></div>
+        </div>
+        <div id="secondaryBtns">
+          <button class="sec-btn" onclick="openPanel('inventoryPanel')">🎒 INV</button>
+          <button class="sec-btn" onclick="openPanel('craftPanel')">⚙ CRAFT</button>
+          <button class="sec-btn" onclick="openPanel('mapPanel')">🗺 MAP</button>
+          <button class="sec-btn" onclick="openPanel('questPanel')">📋 QUESTS</button>
+          <button class="sec-btn" onclick="openPanel('bunkerPanel')">🏚 BASE</button>
+        </div>
+        <div id="actionBtns">
+          <button class="act-btn btn-attack" id="btnAttack" ontouchstart="handleAttackStart()" ontouchend="handleAttackEnd()" onmousedown="handleAttackStart()" onmouseup="handleAttackEnd()">⚔<br><span style="font-size:8px">FIGHT</span></button>
+          <button class="act-btn btn-loot" id="btnLoot" onclick="tryLoot()">👜<br><span style="font-size:8px">LOOT</span></button>
+          <button class="act-btn btn-use" id="btnUse" onclick="useItem()">💊<br><span style="font-size:8px">USE</span></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- World Event Popup -->
+    <div id="worldEvent">
+      <div class="event-title" id="evTitle">SURVIVOR FOUND</div>
+      <div class="event-desc" id="evDesc">You find a wounded survivor. They offer resources in exchange for medical supplies.</div>
+      <div class="event-choices" id="evChoices"></div>
+    </div>
+
+    <!-- Loot Popup -->
+    <div id="lootPopup">
+      <div class="loot-title">LOOT FOUND</div>
+      <div id="lootItems"></div>
+      <button class="loot-close-btn" onclick="closeLootPopup()">✓ TAKE ALL</button>
+    </div>
+
+    <!-- Level Up -->
+    <div id="levelUp">
+      <div class="lu-title">LEVEL UP!</div>
+      <div class="lu-text" id="luText">LEVEL 2 REACHED</div>
+    </div>
+
+    <!-- Desktop hint -->
+    <div id="desktopHint">WASD: Move • Z: Attack • X: Loot • E: Use Item • I: Inventory • C: Craft • M: Map • Q: Quests</div>
+  </div>
+
+  <!-- Inventory Panel -->
+  <div class="panel" id="inventoryPanel">
+    <div class="panel-header">
+      <span class="panel-title">🎒 Inventory</span>
+      <button class="close-btn" onclick="closePanel('inventoryPanel')">✕</button>
+    </div>
+    <div class="panel-tabs">
+      <div class="tab-btn active" onclick="invTab('all')">ALL</div>
+      <div class="tab-btn" onclick="invTab('weapons')">WEAPONS</div>
+      <div class="tab-btn" onclick="invTab('food')">FOOD</div>
+      <div class="tab-btn" onclick="invTab('meds')">MEDS</div>
+      <div class="tab-btn" onclick="invTab('materials')">MATS</div>
+    </div>
+    <div class="panel-body">
+      <div class="inv-grid" id="invGrid"></div>
+    </div>
+  </div>
+
+  <!-- Craft Panel -->
+  <div class="panel" id="craftPanel">
+    <div class="panel-header">
+      <span class="panel-title">⚙ Crafting</span>
+      <button class="close-btn" onclick="closePanel('craftPanel')">✕</button>
+    </div>
+    <div class="panel-tabs">
+      <div class="tab-btn active" onclick="craftTab('weapons')">WEAPONS</div>
+      <div class="tab-btn" onclick="craftTab('armor')">ARMOR</div>
+      <div class="tab-btn" onclick="craftTab('food')">FOOD</div>
+      <div class="tab-btn" onclick="craftTab('meds')">MEDS</div>
+      <div class="tab-btn" onclick="craftTab('ammo')">AMMO</div>
+    </div>
+    <div class="panel-body" id="craftBody"></div>
+  </div>
+
+  <!-- Map Panel -->
+  <div class="panel" id="mapPanel">
+    <div class="panel-header">
+      <span class="panel-title">🗺 World Map</span>
+      <button class="close-btn" onclick="closePanel('mapPanel')">✕</button>
+    </div>
+    <div class="panel-body" style="padding:0;overflow:hidden;position:relative">
+      <canvas id="mapCanvas"></canvas>
+    </div>
+    <div class="map-legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#4299e1"></div>Safe Zone</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#e53e3e"></div>Danger</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#f6e05e"></div>Loot</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#48bb78"></div>Bunker</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#9f7aea"></div>Raiders</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#ff4400"></div>You</div>
+    </div>
+  </div>
+
+  <!-- Quest Panel -->
+  <div class="panel" id="questPanel">
+    <div class="panel-header">
+      <span class="panel-title">📋 Missions</span>
+      <button class="close-btn" onclick="closePanel('questPanel')">✕</button>
+    </div>
+    <div class="panel-tabs">
+      <div class="tab-btn active" onclick="questTab('active')">ACTIVE</div>
+      <div class="tab-btn" onclick="questTab('daily')">DAILY</div>
+      <div class="tab-btn" onclick="questTab('completed')">DONE</div>
+    </div>
+    <div class="panel-body" id="questBody"></div>
+  </div>
+
+  <!-- Bunker Panel -->
+  <div class="panel" id="bunkerPanel">
+    <div class="panel-header">
+      <span class="panel-title">🏚 Base / Bunker</span>
+      <button class="close-btn" onclick="closePanel('bunkerPanel')">✕</button>
+    </div>
+    <div class="panel-body" id="bunkerBody"></div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// WASTELAND ZERO — Full Game Engine
+// ============================================================
+
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+// Game state
+let G = {
+  running: false,
+  paused: false,
+  time: 360, // minutes (6:00 AM)
+  day: 1,
+  weather: 'clear',
+  weatherTimer: 0,
+  worldReputation: 0, // -100 to 100
+  settlements: [],
+  worldEvents: [],
+  eventTimer: 0,
+  panelOpen: null,
+  lastSave: 0,
+  frameCount: 0,
+};
+
+// Camera
+let cam = { x: 0, y: 0, zoom: 1.5 };
+
+// Player
+let player = {
+  x: 800, y: 800,
+  vx: 0, vy: 0,
+  speed: 2.2,
+  size: 10,
+  dir: 0,
+  hp: 100, maxHp: 100,
+  hunger: 100, thirst: 100,
+  stamina: 100, maxStamina: 100,
+  rad: 0,
+  level: 1, xp: 0,
+  xpNext: 100,
+  attackCooldown: 0,
+  isAttacking: false,
+  isDead: false,
+  armor: 0,
+  damage: 15,
+  inventory: [],
+  hotbar: [
+    {id:'hatchet',qty:1},
+    {id:'pistol',qty:1},
+    {id:'medkit',qty:2},
+    {id:'canned_food',qty:3},
+    {id:'water_bottle',qty:3}
+  ],
+  activeSlot: 0,
+  explored: new Set(),
+  kills: 0,
+  lootedContainers: new Set(),
+  reputation: 0,
+};
+
+// All items database
+const ITEMS = {
+  // Weapons
+  hatchet:     {name:'Hatchet',     emoji:'🪓', type:'weapon', dmg:20, cat:'weapons', rarity:'common',    desc:'Basic melee weapon'},
+  knife:       {name:'Knife',       emoji:'🔪', type:'weapon', dmg:15, cat:'weapons', rarity:'common',    desc:'Fast melee, low damage'},
+  pipe:        {name:'Iron Pipe',   emoji:'🔧', type:'weapon', dmg:18, cat:'weapons', rarity:'common',    desc:'Blunt weapon'},
+  pistol:      {name:'Pistol',      emoji:'🔫', type:'weapon', dmg:30, cat:'weapons', rarity:'uncommon',  desc:'Ranged. Uses 9mm ammo'},
+  rifle:       {name:'Rifle',       emoji:'🎯', type:'weapon', dmg:55, cat:'weapons', rarity:'rare',      desc:'High damage ranged'},
+  shotgun:     {name:'Shotgun',     emoji:'💥', type:'weapon', dmg:70, cat:'weapons', rarity:'rare',      desc:'Close range devastation'},
+  sword:       {name:'Machete',     emoji:'⚔️',  type:'weapon', dmg:35, cat:'weapons', rarity:'uncommon',  desc:'Fast melee weapon'},
+  compound_bow:{name:'Compound Bow',emoji:'🏹', type:'weapon', dmg:40, cat:'weapons', rarity:'rare',      desc:'Silent ranged weapon'},
+  flamethrower:{name:'Flamethrower',emoji:'🔥', type:'weapon', dmg:60, cat:'weapons', rarity:'epic',      desc:'Area damage, uses fuel'},
+  plasma_gun:  {name:'Plasma Rifle',emoji:'⚡', type:'weapon', dmg:90, cat:'weapons', rarity:'legendary', desc:'Pre-war energy weapon'},
+  // Armor  
+  rags:        {name:'Rag Armor',   emoji:'🧥', type:'armor',  arm:5,  cat:'armor',   rarity:'common',    desc:'Basic protection'},
+  leather_armor:{name:'Leather Armor',emoji:'🦺',type:'armor', arm:15, cat:'armor',   rarity:'uncommon',  desc:'Decent protection'},
+  metal_armor: {name:'Metal Armor', emoji:'🛡️',  type:'armor',  arm:30, cat:'armor',   rarity:'rare',      desc:'Heavy protection'},
+  hazmat:      {name:'Hazmat Suit', emoji:'☢️',  type:'armor',  arm:20, cat:'armor',   rarity:'rare',      desc:'-50% radiation'},
+  combat_armor:{name:'Combat Armor',emoji:'🔰', type:'armor',  arm:45, cat:'armor',   rarity:'epic',      desc:'Military-grade'},
+  power_armor: {name:'Power Armor', emoji:'🤖', type:'armor',  arm:80, cat:'armor',   rarity:'legendary', desc:'Ultimate protection'},
+  // Food
+  canned_food: {name:'Canned Food', emoji:'🥫', type:'food',   hunger:30, cat:'food', rarity:'common',    desc:'+30 hunger'},
+  bread:       {name:'Stale Bread', emoji:'🍞', type:'food',   hunger:15, cat:'food', rarity:'common',    desc:'+15 hunger'},
+  meat:        {name:'Cooked Meat', emoji:'🥩', type:'food',   hunger:45, cat:'food', rarity:'uncommon',  desc:'+45 hunger'},
+  protein_bar: {name:'Protein Bar', emoji:'🍫', type:'food',   hunger:20, cat:'food', rarity:'common',    desc:'+20 hunger'},
+  military_ration:{name:'MRE',      emoji:'🎖️',  type:'food',   hunger:60, cat:'food', rarity:'rare',      desc:'+60 hunger'},
+  // Water/Drink
+  water_bottle:{name:'Water',       emoji:'💧', type:'drink',  thirst:35, cat:'food', rarity:'common',    desc:'+35 thirst'},
+  purified_water:{name:'Pure Water',emoji:'🫧', type:'drink',  thirst:60, cat:'food', rarity:'uncommon',  desc:'+60 thirst'},
+  soda:        {name:'Soda',        emoji:'🥤', type:'drink',  thirst:25, cat:'food', rarity:'common',    desc:'+25 thirst'},
+  // Meds
+  medkit:      {name:'Med Kit',     emoji:'🧪', type:'med',    heal:50, cat:'meds',   rarity:'uncommon',  desc:'+50 HP'},
+  bandage:     {name:'Bandage',     emoji:'🩹', type:'med',    heal:20, cat:'meds',   rarity:'common',    desc:'+20 HP'},
+  rad_pills:   {name:'Rad-X',       emoji:'💊', type:'med',    rad:-40, cat:'meds',   rarity:'uncommon',  desc:'-40 radiation'},
+  stimpak:     {name:'Stimpak',     emoji:'💉', type:'med',    heal:80, cat:'meds',   rarity:'rare',      desc:'+80 HP'},
+  antidote:    {name:'Antidote',    emoji:'🧫', type:'med',    heal:30, cat:'meds',   rarity:'rare',      desc:'Cure poison & rad'},
+  // Materials
+  scrap_metal: {name:'Scrap Metal', emoji:'🔩', type:'material', cat:'materials', rarity:'common',    desc:'Basic crafting material'},
+  cloth:       {name:'Cloth',       emoji:'🧶', type:'material', cat:'materials', rarity:'common',    desc:'Used for armor/bandages'},
+  wood:        {name:'Wood',        emoji:'🪵', type:'material', cat:'materials', rarity:'common',    desc:'Construction material'},
+  gunpowder:   {name:'Gunpowder',   emoji:'💣', type:'material', cat:'materials', rarity:'uncommon',  desc:'Makes ammo/explosives'},
+  electronics: {name:'Electronics', emoji:'🔌', type:'material', cat:'materials', rarity:'uncommon',  desc:'Advanced crafting'},
+  chemicals:   {name:'Chemicals',   emoji:'⚗️',  type:'material', cat:'materials', rarity:'uncommon',  desc:'Meds and explosives'},
+  fuel:        {name:'Fuel',        emoji:'⛽', type:'material', cat:'materials', rarity:'uncommon',  desc:'Power and weapons'},
+  ammo_9mm:    {name:'9mm Ammo',    emoji:'🔮', type:'ammo',     cat:'materials', rarity:'common',    desc:'Pistol/SMG ammo'},
+  ammo_rifle:  {name:'Rifle Ammo',  emoji:'🎯', type:'ammo',     cat:'materials', rarity:'uncommon',  desc:'Rifle ammo'},
+  ammo_shells: {name:'Shells',      emoji:'🔴', type:'ammo',     cat:'materials', rarity:'uncommon',  desc:'Shotgun shells'},
+  // Tools
+  lockpick:    {name:'Lockpick',    emoji:'🗝️',  type:'tool',     cat:'materials', rarity:'uncommon',  desc:'Open locked containers'},
+  binoculars:  {name:'Binoculars',  emoji:'🔭', type:'tool',     cat:'materials', rarity:'rare',      desc:'See further on map'},
+  compass:     {name:'Compass',     emoji:'🧭', type:'tool',     cat:'materials', rarity:'uncommon',  desc:'Navigation aid'},
+  // Misc
+  caps:        {name:'Caps',        emoji:'🔘', type:'currency', cat:'materials', rarity:'common',    desc:'Post-apoc currency'},
+  map_piece:   {name:'Map Fragment',emoji:'📜', type:'key',      cat:'materials', rarity:'rare',      desc:'Reveals map areas'},
+};
+
+// Crafting recipes
+const RECIPES = {
+  weapons: [
+    {result:'pipe',       name:'Iron Pipe',       req:{scrap_metal:3},        minLvl:1,  emoji:'🔧'},
+    {result:'sword',      name:'Machete',          req:{scrap_metal:5,cloth:2}, minLvl:3,  emoji:'⚔️'},
+    {result:'compound_bow',name:'Compound Bow',    req:{wood:4,scrap_metal:3,cloth:2}, minLvl:8, emoji:'🏹'},
+    {result:'shotgun',    name:'Shotgun',           req:{scrap_metal:8,wood:2,gunpowder:2}, minLvl:12, emoji:'💥'},
+  ],
+  armor: [
+    {result:'rags',       name:'Rag Armor',        req:{cloth:4},              minLvl:1,  emoji:'🧥'},
+    {result:'leather_armor',name:'Leather Armor',  req:{cloth:8,scrap_metal:2},minLvl:5,  emoji:'🦺'},
+    {result:'metal_armor',name:'Metal Armor',      req:{scrap_metal:12,cloth:4},minLvl:10, emoji:'🛡️'},
+    {result:'hazmat',     name:'Hazmat Suit',       req:{cloth:10,chemicals:4,electronics:2}, minLvl:15, emoji:'☢️'},
+    {result:'combat_armor',name:'Combat Armor',    req:{scrap_metal:20,electronics:5,cloth:6}, minLvl:25, emoji:'🔰'},
+  ],
+  food: [
+    {result:'meat',       name:'Cooked Meat',      req:{wood:1,cloth:1},       minLvl:1,  emoji:'🥩'},
+    {result:'purified_water',name:'Purified Water',req:{water_bottle:1,chemicals:1}, minLvl:3, emoji:'🫧'},
+    {result:'protein_bar',name:'Protein Bar',      req:{chemicals:2,cloth:1},  minLvl:5,  emoji:'🍫'},
+  ],
+  meds: [
+    {result:'bandage',    name:'Bandage',          req:{cloth:2},              minLvl:1,  emoji:'🩹'},
+    {result:'medkit',     name:'Med Kit',           req:{cloth:3,chemicals:2},  minLvl:4,  emoji:'🧪'},
+    {result:'rad_pills',  name:'Rad-X Pills',       req:{chemicals:3,cloth:1},  minLvl:6,  emoji:'💊'},
+    {result:'stimpak',    name:'Stimpak',           req:{chemicals:5,electronics:2,cloth:2}, minLvl:12, emoji:'💉'},
+    {result:'antidote',   name:'Antidote',          req:{chemicals:4,electronics:1},         minLvl:10, emoji:'🧫'},
+  ],
+  ammo: [
+    {result:'ammo_9mm',   name:'9mm Ammo',         req:{scrap_metal:2,gunpowder:1}, minLvl:3, emoji:'🔮'},
+    {result:'ammo_rifle', name:'Rifle Ammo',        req:{scrap_metal:3,gunpowder:2}, minLvl:8, emoji:'🎯'},
+    {result:'ammo_shells',name:'Shotgun Shells',    req:{scrap_metal:2,gunpowder:2,cloth:1}, minLvl:10, emoji:'🔴'},
+  ],
+};
+
+// World map config
+const WORLD_W = 3200, WORLD_H = 3200;
+const TILE = 32;
+const COLS = WORLD_W/TILE, ROWS = WORLD_H/TILE;
+
+// Tile types
+const T = {EMPTY:0,GROUND:1,ROAD:2,BUILDING:3,WALL:4,RUIN:5,TREE:6,WATER:7,SWAMP:8,GRASS:9,CONCRETE:10,SAND:11,RADIOACTIVE:12};
+const TILE_COLORS = {
+  0:'#0a0a0a', 1:'#1a1a14', 2:'#2a2a22', 3:'#1e1e1e', 4:'#333',
+  5:'#1c1c18', 6:'#0d1a0d', 7:'#0a1a2a', 8:'#0a1a0a', 9:'#121a10',
+  10:'#1a1a1a', 11:'#1a1810', 12:'#1a0a1a'
+};
+
+let worldMap = null;
+let entities = [];
+let containers = [];
+let particles = [];
+
+// ============================================================
+// WORLD GENERATION
+// ============================================================
+function generateWorld() {
+  worldMap = new Uint8Array(COLS * ROWS).fill(T.GROUND);
+  
+  // Base terrain
+  for(let y=0;y<ROWS;y++) for(let x=0;x<COLS;x++) {
+    const n = noise(x*0.03,y*0.03);
+    const n2 = noise(x*0.008,y*0.008);
+    if(n2 > 0.65) worldMap[y*COLS+x] = T.WATER;
+    else if(n > 0.7) worldMap[y*COLS+x] = T.TREE;
+    else if(n > 0.55 && noise(x*0.05+50,y*0.05+50) > 0.6) worldMap[y*COLS+x] = T.SWAMP;
+    else if(n < -0.3) worldMap[y*COLS+x] = T.SAND;
+    else worldMap[y*COLS+x] = T.GROUND;
+  }
+
+  // Roads
+  const roadY = [8,25,50,75,90];
+  const roadX = [8,25,50,75,90];
+  for(const ry of roadY) {
+    const ty = Math.floor(ry/100*ROWS);
+    for(let x=0;x<COLS;x++) worldMap[ty*COLS+x] = T.ROAD;
+    if(ty+1 < ROWS) for(let x=0;x<COLS;x++) worldMap[(ty+1)*COLS+x] = T.ROAD;
+  }
+  for(const rx of roadX) {
+    const tx = Math.floor(rx/100*COLS);
+    for(let y=0;y<ROWS;y++) worldMap[y*COLS+tx] = T.ROAD;
+    if(tx+1 < COLS) for(let y=0;y<ROWS;y++) worldMap[y*COLS+tx+1] = T.ROAD;
+  }
+
+  // Locations
+  const locations = [
+    {x:800,  y:800,  type:'city',     name:'Ashvale City',  size:180},
+    {x:2400, y:700,  type:'town',     name:'Dustfall',      size:100},
+    {x:400,  y:2400, type:'military', name:'Fort Despair',  size:120},
+    {x:2600, y:2400, type:'factory',  name:'Iron Works',    size:130},
+    {x:1600, y:1600, type:'bunker',   name:'Safe House',    size:60},
+    {x:1200, y:2800, type:'town',     name:'Rustvale',      size:90},
+    {x:2800, y:1600, type:'gas',      name:'Gas Stop',      size:40},
+    {x:600,  y:1400, type:'forest',   name:'Deadwood',      size:200},
+    {x:2000, y:2800, type:'swamp',    name:'Toxic Bog',     size:160},
+    {x:1800, y:400,  type:'vault',    name:'Vault 17',      size:50},
+    {x:500,  y:600,  type:'gas',      name:'Rusty Pump',    size:35},
+    {x:2200, y:1200, type:'town',     name:'New Dawn',      size:85},
+  ];
+
+  G.settlements = locations;
+
+  // Build location tiles
+  for(const loc of locations) {
+    const tx = Math.floor(loc.x/TILE);
+    const ty = Math.floor(loc.y/TILE);
+    const ts = Math.floor(loc.size/TILE/2);
+    const tileType = loc.type === 'forest' ? T.TREE : loc.type === 'swamp' ? T.SWAMP : T.CONCRETE;
+    for(let dy=-ts;dy<=ts;dy++) for(let dx=-ts;dx<=ts;dx++) {
+      const nx=tx+dx, ny=ty+dy;
+      if(nx>=0&&ny>=0&&nx<COLS&&ny<ROWS) {
+        if(Math.abs(dx)===ts||Math.abs(dy)===ts) worldMap[ny*COLS+nx] = T.WALL;
+        else worldMap[ny*COLS+nx] = tileType;
+      }
+    }
+    // Ruins inside
+    if(loc.type !== 'forest' && loc.type !== 'swamp') {
+      for(let i=0;i<8;i++) {
+        const rx=tx+randInt(-ts+1,ts-1), ry=ty+randInt(-ts+1,ts-1);
+        if(rx>=0&&ry>=0&&rx<COLS&&ry<ROWS) worldMap[ry*COLS+rx] = T.RUIN;
+      }
+    }
+    // Radiation zones
+    if(loc.type === 'vault' || loc.type === 'military') {
+      for(let dy=-2;dy<=2;dy++) for(let dx=-2;dx<=2;dx++) {
+        const nx=tx+dx,ny=ty+dy;
+        if(nx>=0&&ny>=0&&nx<COLS&&ny<ROWS) worldMap[ny*COLS+nx] = T.RADIOACTIVE;
+      }
+    }
+    // Settlement state
+    loc.health = 50;
+    loc.controlled = 'neutral'; // neutral, player, raiders
+  }
+
+  // Spawn containers (loot spots)
+  containers = [];
+  for(const loc of locations) {
+    const count = loc.type === 'city' ? 12 : loc.type === 'military' ? 10 : 6;
+    for(let i=0;i<count;i++) {
+      const angle = Math.random()*Math.PI*2;
+      const dist = 20 + Math.random() * (loc.size * 0.35);
+      const cx = loc.x + Math.cos(angle)*dist;
+      const cy = loc.y + Math.sin(angle)*dist;
+      const types = ['locker','toolbox','crate','car','safe'];
+      containers.push({
+        x: cx, y: cy,
+        type: types[randInt(0,4)],
+        looted: false,
+        id: `c_${cx.toFixed(0)}_${cy.toFixed(0)}`,
+        respawn: 0,
+        zone: loc.type,
+      });
+    }
+  }
+  // Random scattered containers
+  for(let i=0;i<80;i++) {
+    containers.push({
+      x: Math.random()*WORLD_W,
+      y: Math.random()*WORLD_H,
+      type: ['locker','toolbox','crate','car'][randInt(0,3)],
+      looted: false,
+      id: `sc_${i}`,
+      respawn: 0,
+      zone: 'open',
+    });
+  }
+
+  // Spawn initial enemies
+  spawnInitialEnemies();
+  
+  // Player bunker
+  player.bunker = {
+    x: 1600, y: 1600,
+    storage:   {level:1, desc:'Store more items',     cost:{scrap_metal:10,wood:5},  maxLvl:5},
+    workbench: {level:1, desc:'Craft better gear',    cost:{scrap_metal:15,electronics:3}, maxLvl:3},
+    medical:   {level:0, desc:'Heal faster at base',  cost:{cloth:8,chemicals:4},    maxLvl:3},
+    generator: {level:0, desc:'Power for crafting',   cost:{scrap_metal:20,fuel:5},  maxLvl:3},
+    farm:      {level:0, desc:'Grow food',            cost:{wood:10,cloth:5},        maxLvl:3},
+    purifier:  {level:0, desc:'Clean water',          cost:{scrap_metal:8,chemicals:3}, maxLvl:3},
+  };
+}
+
+function spawnInitialEnemies() {
+  entities = [];
+  // Zombies near locations
+  for(const loc of G.settlements) {
+    const count = loc.type === 'city' ? 8 : loc.type === 'military' ? 10 : 5;
+    for(let i=0;i<count;i++) {
+      const angle = Math.random()*Math.PI*2;
+      const dist = 30 + Math.random()*loc.size*0.4;
+      spawnEnemy(
+        loc.x + Math.cos(angle)*dist,
+        loc.y + Math.sin(angle)*dist,
+        getZoneEnemyType(loc.type)
+      );
+    }
+  }
+  // Random world enemies
+  for(let i=0;i<60;i++) {
+    spawnEnemy(Math.random()*WORLD_W, Math.random()*WORLD_H, Math.random()<0.7 ? 'walker' : 'raider_scav');
+  }
+}
+
+function getZoneEnemyType(zone) {
+  const map = {
+    city: ['walker','runner','raider_scav'],
+    military: ['runner','mutant','raider_rifle','raider_armor'],
+    factory: ['walker','runner','toxic_zombie'],
+    vault: ['mutant','toxic_zombie','raider_leader'],
+    swamp: ['toxic_zombie','mutant'],
+    town: ['walker','raider_scav'],
+  };
+  const options = map[zone] || ['walker'];
+  return options[randInt(0,options.length-1)];
+}
+
+const ENEMY_TYPES = {
+  walker:       {name:'Walker',      emoji:'🧟', hp:40,  maxHp:40,  dmg:8,  speed:0.6, xp:10, size:8,  color:'#5a3d2b', loot:'zombie_basic'},
+  runner:       {name:'Runner',      emoji:'🏃', hp:30,  maxHp:30,  dmg:12, speed:1.4, xp:20, size:7,  color:'#4a2d1a', loot:'zombie_basic'},
+  mutant:       {name:'Mutant',      emoji:'👾', hp:90,  maxHp:90,  dmg:20, speed:0.8, xp:40, size:12, color:'#3d1f3d', loot:'zombie_rare'},
+  toxic_zombie: {name:'Toxic Zombie',emoji:'☣️',  hp:60,  maxHp:60,  dmg:15, speed:0.7, xp:30, size:10, color:'#1a3d1a', loot:'zombie_toxic', toxic:true},
+  boss_zombie:  {name:'Boss Zombie', emoji:'💀', hp:300, maxHp:300, dmg:35, speed:0.9, xp:200,size:18, color:'#2d1010', loot:'boss',         boss:true},
+  raider_scav:  {name:'Scavenger',   emoji:'😈', hp:50,  maxHp:50,  dmg:15, speed:1.0, xp:25, size:9,  color:'#3d2d1a', loot:'raider_basic'},
+  raider_rifle: {name:'Rifleman',    emoji:'🎯', hp:70,  maxHp:70,  dmg:30, speed:0.9, xp:50, size:9,  color:'#2a1a0a', loot:'raider_gear',  ranged:true, range:180},
+  raider_armor: {name:'Heavy Raider',emoji:'⚔️',  hp:120, maxHp:120, dmg:25, speed:0.7, xp:80, size:11, color:'#1a1a1a', loot:'raider_gear'},
+  raider_leader:{name:'Raider Boss', emoji:'👑', hp:200, maxHp:200, dmg:40, speed:1.0, xp:150,size:13, color:'#0a0a2a', loot:'boss',         boss:true},
+};
+
+function spawnEnemy(x,y,type) {
+  const t = ENEMY_TYPES[type] || ENEMY_TYPES.walker;
+  entities.push({
+    x, y, type, ...t,
+    hp: t.hp + player.level*2,
+    maxHp: t.hp + player.level*2,
+    vx:0, vy:0,
+    state:'patrol',
+    patrolX: x + (Math.random()-.5)*100,
+    patrolY: y + (Math.random()-.5)*100,
+    alertTimer: 0,
+    attackTimer: 0,
+    dead: false,
+    id: Math.random().toString(36).slice(2),
+  });
+}
+
+// ============================================================
+// NOISE (simple seeded perlin-like)
+// ============================================================
+function noise(x,y) {
+  const ix=Math.floor(x), iy=Math.floor(y);
+  const fx=x-ix, fy=y-iy;
+  const a=hash(ix,iy), b=hash(ix+1,iy), c=hash(ix,iy+1), d=hash(ix+1,iy+1);
+  const u=fx*fx*(3-2*fx), v=fy*fy*(3-2*fy);
+  return lerp(lerp(a,b,u),lerp(c,d,u),v)*2-1;
+}
+function hash(x,y){let h=(x*374761393+y*668265263);h=((h^(h>>>13))*1274126177)&0xffffffff;return(h>>>0)/0xffffffff;}
+function lerp(a,b,t){return a+(b-a)*t;}
+function randInt(min,max){return Math.floor(Math.random()*(max-min+1))+min;}
+
+// ============================================================
+// LOOT SYSTEM
+// ============================================================
+const LOOT_TABLES = {
+  zombie_basic: [
+    {id:'cloth',      w:30, qty:[1,2]},
+    {id:'canned_food',w:20, qty:[1,1]},
+    {id:'bandage',    w:15, qty:[1,1]},
+    {id:'caps',       w:25, qty:[2,8]},
+    {id:'scrap_metal',w:10, qty:[1,3]},
+  ],
+  zombie_rare: [
+    {id:'medkit',     w:20, qty:[1,1]},
+    {id:'ammo_9mm',   w:25, qty:[3,8]},
+    {id:'electronics',w:15, qty:[1,2]},
+    {id:'caps',       w:30, qty:[5,15]},
+    {id:'chemicals',  w:10, qty:[1,2]},
+  ],
+  zombie_toxic: [
+    {id:'chemicals',  w:30, qty:[1,3]},
+    {id:'rad_pills',  w:25, qty:[1,2]},
+    {id:'cloth',      w:25, qty:[1,2]},
+    {id:'caps',       w:20, qty:[3,10]},
+  ],
+  raider_basic: [
+    {id:'ammo_9mm',   w:30, qty:[2,6]},
+    {id:'cloth',      w:20, qty:[1,2]},
+    {id:'caps',       w:30, qty:[5,20]},
+    {id:'canned_food',w:10, qty:[1,2]},
+    {id:'scrap_metal',w:10, qty:[1,3]},
+  ],
+  raider_gear: [
+    {id:'ammo_9mm',   w:20, qty:[3,8]},
+    {id:'ammo_rifle', w:15, qty:[2,5]},
+    {id:'medkit',     w:15, qty:[1,1]},
+    {id:'caps',       w:30, qty:[10,30]},
+    {id:'scrap_metal',w:10, qty:[2,5]},
+    {id:'electronics',w:10, qty:[1,2]},
+  ],
+  boss: [
+    {id:'stimpak',    w:25, qty:[1,2]},
+    {id:'ammo_rifle', w:20, qty:[5,12]},
+    {id:'caps',       w:20, qty:[20,50]},
+    {id:'electronics',w:15, qty:[2,4]},
+    {id:'chemicals',  w:10, qty:[2,4]},
+    {id:'lockpick',   w:10, qty:[1,2]},
+  ],
+  locker:   [{id:'cloth',w:25,qty:[1,3]},{id:'medkit',w:15,qty:[1,1]},{id:'caps',w:30,qty:[2,10]},{id:'ammo_9mm',w:15,qty:[2,6]},{id:'bandage',w:15,qty:[1,2]}],
+  toolbox:  [{id:'scrap_metal',w:30,qty:[2,5]},{id:'electronics',w:20,qty:[1,2]},{id:'fuel',w:15,qty:[1,2]},{id:'caps',w:20,qty:[2,8]},{id:'gunpowder',w:15,qty:[1,3]}],
+  crate:    [{id:'canned_food',w:25,qty:[1,3]},{id:'water_bottle',w:20,qty:[1,2]},{id:'ammo_9mm',w:15,qty:[2,5]},{id:'cloth',w:20,qty:[1,2]},{id:'caps',w:20,qty:[3,12]}],
+  car:      [{id:'fuel',w:30,qty:[1,3]},{id:'scrap_metal',w:25,qty:[2,4]},{id:'caps',w:25,qty:[1,5]},{id:'ammo_9mm',w:10,qty:[1,3]},{id:'cloth',w:10,qty:[1,2]}],
+  safe:     [{id:'caps',w:30,qty:[10,40]},{id:'ammo_rifle',w:20,qty:[3,8]},{id:'medkit',w:15,qty:[1,2]},{id:'electronics',w:15,qty:[2,4]},{id:'stimpak',w:10,qty:[1,1]},{id:'ammo_shells',w:10,qty:[2,5]}],
+};
+
+function rollLoot(tableKey, count=3) {
+  const table = LOOT_TABLES[tableKey] || LOOT_TABLES.locker;
+  const result = [];
+  const rolls = count + randInt(0,2);
+  for(let i=0;i<rolls;i++) {
+    const total = table.reduce((a,e)=>a+e.w,0);
+    let r = Math.random()*total;
+    for(const entry of table) {
+      r -= entry.w;
+      if(r <= 0) {
+        const qty = randInt(entry.qty[0], entry.qty[1]);
+        const existing = result.find(r=>r.id===entry.id);
+        if(existing) existing.qty += qty;
+        else result.push({id:entry.id, qty});
+        break;
+      }
+    }
+  }
+  return result;
+}
+
+function rarityOf(baseRarity) {
+  const r = Math.random();
+  if(r < 0.005) return 'legendary';
+  if(r < 0.02) return 'epic';
+  if(r < 0.08) return 'rare';
+  if(r < 0.25) return 'uncommon';
+  return baseRarity || 'common';
+}
+
+// ============================================================
+// INVENTORY SYSTEM
+// ============================================================
+function addToInventory(id, qty=1) {
+  if(!ITEMS[id]) return;
+  const existing = player.inventory.find(i=>i.id===id);
+  if(existing) existing.qty += qty;
+  else player.inventory.push({id, qty, rarity: rarityOf(ITEMS[id].rarity)});
+}
+
+function hasItem(id, qty=1) {
+  const item = player.inventory.find(i=>i.id===id);
+  const hotItem = player.hotbar.find(i=>i&&i.id===id);
+  const invQty = item ? item.qty : 0;
+  const hotQty = hotItem ? hotItem.qty : 0;
+  return (invQty + hotQty) >= qty;
+}
+
+function removeItem(id, qty=1) {
+  let remaining = qty;
+  const inv = player.inventory.find(i=>i.id===id);
+  if(inv) { const take=Math.min(remaining,inv.qty); inv.qty-=take; remaining-=take; }
+  if(remaining > 0) {
+    const hot = player.hotbar.find(i=>i&&i.id===id);
+    if(hot) { const take=Math.min(remaining,hot.qty); hot.qty-=take; remaining-=take; }
+  }
+  player.inventory = player.inventory.filter(i=>i.qty>0);
+  player.hotbar = player.hotbar.map(i=>i&&i.qty<=0?null:i);
+}
+
+function countItem(id) {
+  const inv = player.inventory.find(i=>i.id===id);
+  const hot = player.hotbar.find(i=>i&&i.id===id);
+  return (inv?.qty||0) + (hot?.qty||0);
+}
+
+// ============================================================
+// CRAFTING
+// ============================================================
+function canCraft(recipe) {
+  return player.level >= recipe.minLvl && Object.entries(recipe.req).every(([id,qty])=>hasItem(id,qty));
+}
+
+function doCraft(recipe) {
+  if(!canCraft(recipe)) return;
+  Object.entries(recipe.req).forEach(([id,qty])=>removeItem(id,qty));
+  addToInventory(recipe.result, 1);
+  addXP(15);
+  notify(`Crafted ${ITEMS[recipe.result].name}!`,'good');
+  renderCraftPanel(currentCraftTab);
+  renderInventory(currentInvTab);
+}
+
+// ============================================================
+// EXPERIENCE & LEVELS
+// ============================================================
+const XP_TABLE = Array.from({length:51},(_,i)=>Math.floor(100*Math.pow(1.25,i)));
+
+function addXP(amount) {
+  player.xp += amount;
+  while(player.xp >= XP_TABLE[player.level] && player.level < 50) {
+    player.xp -= XP_TABLE[player.level];
+    player.level++;
+    onLevelUp();
+  }
+  updateHUD();
+}
+
+function onLevelUp() {
+  const lu = document.getElementById('levelUp');
+  const lt = document.getElementById('luText');
+  lt.textContent = `LEVEL ${player.level} REACHED`;
+  lu.style.display = 'block';
+  setTimeout(()=>lu.style.display='none', 3000);
+  notify(`⭐ LEVEL UP! Now level ${player.level}`,'xp');
+  // Stat boosts
+  player.maxHp = 100 + (player.level-1)*10;
+  player.hp = Math.min(player.hp + 20, player.maxHp);
+  player.maxStamina = 100 + (player.level-1)*5;
+  player.damage = 15 + player.level*2;
+  // Unlock notifications
+  const unlocks = {
+    3:'New craft: Machete',5:'Armor crafting unlocked',8:'Compound Bow available',
+    10:'Metal Armor unlocked',12:'Shotgun & Stimpak unlocked',15:'Hazmat Suit unlocked',
+    20:'High-risk zones unlocked',25:'Combat Armor unlocked',30:'Legendary loot chance +',
+    50:'ENDGAME REACHED — Legendary gear available!'
+  };
+  if(unlocks[player.level]) notify(`🔓 ${unlocks[player.level]}`,'xp');
+}
+
+// ============================================================
+// COMBAT
+// ============================================================
+function playerAttack() {
+  if(player.attackCooldown > 0 || player.stamina < 5) return;
+  const weapon = getActiveWeapon();
+  const dmg = weapon ? (ITEMS[weapon.id]?.dmg || player.damage) : player.damage;
+  const range = weapon?.id === 'rifle' ? 160 : weapon?.id === 'compound_bow' ? 150 : 
+                weapon?.id === 'pistol' ? 120 : weapon?.id === 'shotgun' ? 80 : 45;
+  
+  player.attackCooldown = weapon?.id === 'pistol' ? 25 : weapon?.id === 'rifle' ? 40 : 
+                          weapon?.id === 'shotgun' ? 45 : 18;
+  player.stamina = Math.max(0, player.stamina - 8);
+  
+  let hit = false;
+  for(const e of entities) {
+    if(e.dead) continue;
+    const dx = e.x - player.x, dy = e.y - player.y;
+    const dist = Math.sqrt(dx*dx+dy*dy);
+    if(dist < range) {
+      const finalDmg = Math.max(1, dmg - (e.armor||0));
+      e.hp -= finalDmg;
+      spawnHitParticle(e.x, e.y, finalDmg);
+      hit = true;
+      if(e.hp <= 0) killEnemy(e);
+    }
+  }
+  if(hit) {
+    flashHit();
+    if(weapon?.id === 'pistol' || weapon?.id === 'rifle' || weapon?.id === 'shotgun') {
+      const ammoId = weapon.id === 'pistol' ? 'ammo_9mm' : weapon.id === 'rifle' ? 'ammo_rifle' : 'ammo_shells';
+      if(!hasItem(ammoId,1)) { notify('No ammo!','warn'); }
+      else removeItem(ammoId,1);
+    }
+  }
+  spawnMuzzleParticle();
+}
+
+function killEnemy(e) {
+  e.dead = true;
+  e.hp = 0;
+  player.kills++;
+  addXP(e.xp);
+  const lootItems = rollLoot(e.loot || 'zombie_basic', 2);
+  lootItems.forEach(l=>addToInventory(l.id,l.qty));
+  spawnDeathParticles(e.x, e.y, e.color);
+  notify(`${e.name} killed! +${e.xp}XP`,'good');
+  // World reputation
+  if(e.type.startsWith('raider')) {
+    G.worldReputation = Math.min(100, G.worldReputation+2);
+    updateSettlements();
+  }
+}
+
+function enemyAttackPlayer(e) {
+  if(e.attackTimer > 0) return;
+  e.attackTimer = 50;
+  const rawDmg = e.dmg;
+  const mitigated = Math.max(1, rawDmg - player.armor);
+  player.hp = Math.max(0, player.hp - mitigated);
+  showHitFlash();
+  if(e.toxic) player.rad = Math.min(100, player.rad + 5);
+  if(player.hp <= 0) playerDied();
+}
+
+function playerDied() {
+  if(player.isDead) return;
+  player.isDead = true;
+  notify('YOU DIED — Respawning at base...','warn');
+  setTimeout(()=>{
+    player.hp = Math.max(1, player.maxHp * 0.3);
+    player.isDead = false;
+    player.x = player.bunker.x;
+    player.y = player.bunker.y;
+    addXP(-Math.floor(player.xp*0.1)); // lose 10% xp
+    notify('Respawned at bunker. Lost some XP.','warn');
+  }, 2500);
+}
+
+function getActiveWeapon() {
+  const slot = player.hotbar[player.activeSlot];
+  if(!slot || !ITEMS[slot.id] || ITEMS[slot.id].type !== 'weapon') return null;
+  return slot;
+}
+
+// ============================================================
+// PARTICLES
+// ============================================================
+function spawnHitParticle(x,y,dmg) {
+  for(let i=0;i<4;i++) {
+    particles.push({
+      x,y,
+      vx:(Math.random()-.5)*3,
+      vy:(Math.random()-.5)*3,
+      life:1,decay:.05,
+      size:2+Math.random()*2,
+      color:'#e53e3e',type:'hit',
+    });
+  }
+}
+function spawnDeathParticles(x,y,color) {
+  for(let i=0;i<12;i++) {
+    particles.push({
+      x,y,
+      vx:(Math.random()-.5)*5,
+      vy:(Math.random()-.5)*5,
+      life:1,decay:.03,
+      size:3+Math.random()*3,
+      color,type:'death',
+    });
+  }
+}
+function spawnMuzzleParticle() {
+  particles.push({
+    x:player.x+Math.cos(player.dir)*15,
+    y:player.y+Math.sin(player.dir)*15,
+    vx:Math.cos(player.dir)*4,vy:Math.sin(player.dir)*4,
+    life:1,decay:.15,size:4,color:'#f6e05e',type:'muzzle',
+  });
+}
+
+// ============================================================
+// SURVIVAL STATS
+// ============================================================
+function updateSurvivalStats(dt) {
+  const tile = getCurrentTile();
+  // Drain rates
+  const hungerRate = 0.002 * dt;
+  const thirstRate = 0.003 * dt;
+  const staminaRegen = player.vx===0&&player.vy===0 ? 0.08*dt : 0;
+  const staminaDrain = (player.vx!==0||player.vy!==0) ? 0.015*dt : 0;
+  const radRate = tile===T.RADIOACTIVE ? 0.05*dt : 0;
+  
+  player.hunger = Math.max(0, player.hunger - hungerRate);
+  player.thirst = Math.max(0, player.thirst - thirstRate);
+  player.stamina = Math.max(0, Math.min(player.maxStamina, player.stamina - staminaDrain + staminaRegen));
+  player.rad = Math.min(100, player.rad + radRate);
+  
+  if(player.hunger <= 0) player.hp = Math.max(0, player.hp - 0.01*dt);
+  if(player.thirst <= 0) player.hp = Math.max(0, player.hp - 0.02*dt);
+  if(player.rad >= 80) player.hp = Math.max(0, player.hp - 0.03*dt);
+  
+  // Bunker healing
+  const bx = player.bunker.x, by = player.bunker.y;
+  const bDist = Math.sqrt((player.x-bx)**2+(player.y-by)**2);
+  if(bDist < 80 && player.bunker.medical.level > 0) {
+    player.hp = Math.min(player.maxHp, player.hp + 0.02*dt*player.bunker.medical.level);
+  }
+  
+  if(player.hp <= 0 && !player.isDead) playerDied();
+}
+
+function getCurrentTile() {
+  const tx = Math.floor(player.x/TILE), ty = Math.floor(player.y/TILE);
+  if(tx<0||ty<0||tx>=COLS||ty>=ROWS) return T.GROUND;
+  return worldMap[ty*COLS+tx];
+}
+
+function useItem() {
+  const slot = player.hotbar[player.activeSlot];
+  if(!slot || !ITEMS[slot.id]) return;
+  const item = ITEMS[slot.id];
+  if(item.type === 'food') {
+    player.hunger = Math.min(100, player.hunger + item.hunger);
+    removeItem(slot.id, 1);
+    notify(`+${item.hunger} Hunger`,'good');
+  } else if(item.type === 'drink') {
+    player.thirst = Math.min(100, player.thirst + item.thirst);
+    removeItem(slot.id, 1);
+    notify(`+${item.thirst} Thirst`,'good');
+  } else if(item.type === 'med') {
+    if(item.heal) player.hp = Math.min(player.maxHp, player.hp + item.heal);
+    if(item.rad) player.rad = Math.max(0, player.rad + item.rad);
+    removeItem(slot.id, 1);
+    notify(`Used ${item.name}!`,'good');
+  }
+  updateHUD();
+}
+
+// ============================================================
+// LOOTING
+// ============================================================
+function tryLoot() {
+  // Check nearby containers
+  let nearest = null, nearDist = 60;
+  for(const c of containers) {
+    if(c.looted && Date.now() < c.respawn) continue;
+    const dx = c.x - player.x, dy = c.y - player.y;
+    const dist = Math.sqrt(dx*dx+dy*dy);
+    if(dist < nearDist) { nearest=c; nearDist=dist; }
+  }
+  if(nearest) {
+    lootContainer(nearest);
+    return;
+  }
+  // Check nearby enemies
+  let nearEnemy = null, eDist = 50;
+  for(const e of entities) {
+    if(!e.dead) continue;
+    const dx = e.x - player.x, dy = e.y - player.y;
+    const dist = Math.sqrt(dx*dx+dy*dy);
+    if(dist < eDist) { nearEnemy=e; eDist=dist; }
+  }
+  if(nearEnemy) {
+    const loot = rollLoot(nearEnemy.loot||'zombie_basic',2);
+    showLootPopup(loot);
+    entities = entities.filter(e=>e.id!==nearEnemy.id);
+    return;
+  }
+  notify('Nothing to loot nearby','warn');
+}
+
+function lootContainer(c) {
+  const table = LOOT_TABLES[c.type] || LOOT_TABLES.locker;
+  const loot = rollLoot(c.type, 3);
+  // Zone bonus loot
+  if(c.zone === 'military') {
+    if(Math.random()<0.3) loot.push({id:'ammo_rifle',qty:randInt(2,6)});
+    if(Math.random()<0.15) loot.push({id:'stimpak',qty:1});
+  }
+  if(c.zone === 'vault') {
+    if(Math.random()<0.2) loot.push({id:'electronics',qty:randInt(1,3)});
+    if(Math.random()<0.1) loot.push({id:'plasma_gun',qty:1});
+  }
+  showLootPopup(loot);
+  loot.forEach(l=>addToInventory(l.id,l.qty));
+  c.looted = true;
+  c.respawn = Date.now() + 300000; // 5 min respawn
+  if(!player.lootedContainers.has(c.id)) {
+    player.lootedContainers.add(c.id);
+    addXP(5);
+  }
+  lootFlash();
+}
+
+function showLootPopup(items) {
+  const popup = document.getElementById('lootPopup');
+  const list = document.getElementById('lootItems');
+  list.innerHTML = items.map(l=>{
+    const item = ITEMS[l.id];
+    if(!item) return '';
+    return `<div class="loot-row"><span class="loot-icon">${item.emoji}</span><span>${item.name}</span><span style="margin-left:auto;color:#f6e05e">x${l.qty}</span></div>`;
+  }).join('');
+  popup.style.display = 'block';
+}
+
+function closeLootPopup() {
+  document.getElementById('lootPopup').style.display='none';
+}
+
+// ============================================================
+// QUESTS
+// ============================================================
+let quests = {
+  active: [
+    {id:'q1',type:'story',title:'Survivor\'s First Steps',desc:'Explore the ruins of Ashvale City and find supplies.',reward:'100 XP + 20 caps',progress:0,goal:1,complete:false},
+    {id:'q2',type:'story',title:'Thin the Horde',desc:'Kill 10 zombies threatening the settlement.',reward:'200 XP + Medkit',progress:0,goal:10,complete:false},
+    {id:'q3',type:'side',title:'Lost Supply Cache',desc:'Find the military cache hidden near Fort Despair.',reward:'150 XP + Ammo',progress:0,goal:1,complete:false},
+  ],
+  daily: [
+    {id:'d1',type:'daily',title:'Daily Hunt',desc:'Kill 5 enemies today.',reward:'50 XP',progress:0,goal:5,complete:false,reset:true},
+    {id:'d2',type:'daily',title:'Scavenger',desc:'Loot 3 containers today.',reward:'30 XP + 10 caps',progress:0,goal:3,complete:false,reset:true},
+    {id:'d3',type:'daily',title:'Stay Nourished',desc:'Keep hunger and thirst above 50% for a full day.',reward:'40 XP',progress:0,goal:1,complete:false,reset:true},
+  ],
+  completed: [],
+};
+
+function updateQuests() {
+  // Kill quest
+  const kq = quests.active.find(q=>q.id==='q2');
+  if(kq) { kq.progress = Math.min(player.kills, kq.goal); if(kq.progress>=kq.goal&&!kq.complete) completeQuest(kq,'active'); }
+  // Daily hunt
+  const dq = quests.daily.find(q=>q.id==='d1');
+  if(dq) { dq.progress = Math.min(player.kills, dq.goal); if(dq.progress>=dq.goal&&!dq.complete) completeQuest(dq,'daily'); }
+}
+
+function completeQuest(q, pool) {
+  q.complete = true;
+  addXP(parseInt(q.reward)||100);
+  notify(`✅ Quest complete: ${q.title}`,'good');
+  quests.completed.push({...q});
+  if(pool==='active') quests.active = quests.active.filter(x=>x.id!==q.id);
+  else quests.daily = quests.daily.filter(x=>x.id!==q.id);
+}
+
+// ============================================================
+// WORLD EVENTS
+// ============================================================
+const WORLD_EVENTS = [
+  {title:'SUPPLY DROP', desc:'A military cargo plane flies over dropping supplies. Marked on your map.', 
+   choices:[{text:'Rush to the drop zone',fn:()=>{addToInventory('stimpak',2);addToInventory('ammo_rifle',8);addXP(50);notify('Grabbed military supplies!','loot');}},
+            {text:'Stay cautious',fn:()=>{notify('You let others take the risk.','warn');}}]},
+  {title:'WOUNDED SURVIVOR', desc:'You find a wounded survivor. They offer caps for medical aid.',
+   choices:[{text:'Help them (use bandage)',fn:()=>{if(hasItem('bandage',1)){removeItem('bandage',1);addToInventory('caps',20);addXP(30);G.worldReputation+=5;notify('Helped survivor. +20 caps, +rep','good');}else notify('No bandages!','warn');}},
+            {text:'Leave them',fn:()=>{G.worldReputation-=3;notify('You walked away...','warn');}}]},
+  {title:'RAIDER PATROL', desc:'A raider patrol spotted you! They demand tribute or fight.',
+   choices:[{text:'Fight them! (aggressive)',fn:()=>{spawnEnemy(player.x+50,player.y,'raider_rifle');spawnEnemy(player.x-50,player.y,'raider_scav');notify('Raiders engaged!','warn');}},
+            {text:'Pay them (10 caps)',fn:()=>{if(hasItem('caps',10)){removeItem('caps',10);notify('Paid the toll. Safe passage.','warn');}else notify('No caps! They attack!','warn');}},
+            {text:'Sneak away',fn:()=>{player.x+=100;notify('Slipped away undetected.','good');}}]},
+  {title:'TRADER CARAVAN', desc:'An NPC trader with rare goods passes through.',
+   choices:[{text:'Trade (spend 30 caps for rare item)',fn:()=>{if(hasItem('caps',30)){removeItem('caps',30);const rares=['rifle','metal_armor','stimpak','electronics'];addToInventory(rares[randInt(0,3)],1);addXP(20);notify('Got rare item from trader!','loot');}else notify('Not enough caps (need 30).','warn');}},
+            {text:'Just chat (info)',fn:()=>{notify('Trader: "New Dawn settlement is under attack..."','warn');addXP(10);}}]},
+  {title:'RADIATION STORM', desc:'A radiation storm sweeps in! Seek shelter or prepare.',
+   choices:[{text:'Take cover (wait it out)',fn:()=>{G.weather='radiation';G.weatherTimer=600;notify('Radiation storm! Stay indoors!','warn');}},
+            {text:'Use Rad-X pill',fn:()=>{if(hasItem('rad_pills',1)){removeItem('rad_pills',1);player.rad=Math.max(0,player.rad-30);notify('Rad-X taken. Radiation reduced.','good');}else notify('No Rad-X pills!','warn');}}]},
+  {title:'ABANDONED BUNKER', desc:'You discovered a hidden bunker. It may hold rare loot but also danger.',
+   choices:[{text:'Explore it',fn:()=>{const loot=[{id:'electronics',qty:3},{id:'ammo_rifle',qty:8},{id:'stimpak',qty:2},{id:'caps',qty:35}];showLootPopup(loot);loot.forEach(l=>addToInventory(l.id,l.qty));addXP(80);notify('Bunker raided!','loot');}},
+            {text:'Mark on map and leave',fn:()=>{addXP(15);notify('Location marked on map.','good');}}]},
+];
+
+function triggerWorldEvent() {
+  const ev = WORLD_EVENTS[randInt(0,WORLD_EVENTS.length-1)];
+  const popup = document.getElementById('worldEvent');
+  document.getElementById('evTitle').textContent = ev.title;
+  document.getElementById('evDesc').textContent = ev.desc;
+  const choiceDiv = document.getElementById('evChoices');
+  choiceDiv.innerHTML = '';
+  ev.choices.forEach(c=>{
+    const btn = document.createElement('button');
+    btn.className='event-choice';
+    btn.textContent=c.text;
+    btn.onclick=()=>{ c.fn(); popup.style.display='none'; };
+    choiceDiv.appendChild(btn);
+  });
+  popup.style.display='block';
+}
+
+// ============================================================
+// SETTLEMENT / REPUTATION SYSTEM
+// ============================================================
+function updateSettlements() {
+  for(const s of G.settlements) {
+    if(G.worldReputation > 30) {
+      if(s.controlled === 'raiders') s.controlled = 'neutral';
+      else if(s.controlled === 'neutral') s.controlled = 'player';
+      s.health = Math.min(100, s.health + 1);
+    } else if(G.worldReputation < -20) {
+      if(s.controlled === 'player') s.controlled = 'neutral';
+      else if(s.controlled === 'neutral') s.controlled = 'raiders';
+      s.health = Math.max(0, s.health - 1);
+    }
+  }
+}
+
+// ============================================================
+// HUD UPDATES
+// ============================================================
+function updateHUD() {
+  const pct = v=>Math.max(0,Math.min(100,v))+'%';
+  document.getElementById('barHp').style.width=pct(player.hp/player.maxHp*100);
+  document.getElementById('barHunger').style.width=pct(player.hunger);
+  document.getElementById('barThirst').style.width=pct(player.thirst);
+  document.getElementById('barStamina').style.width=pct(player.stamina/player.maxStamina*100);
+  document.getElementById('barRad').style.width=pct(player.rad);
+  document.getElementById('valHp').textContent=Math.ceil(player.hp);
+  document.getElementById('valHunger').textContent=Math.ceil(player.hunger);
+  document.getElementById('valThirst').textContent=Math.ceil(player.thirst);
+  document.getElementById('valStamina').textContent=Math.ceil(player.stamina);
+  document.getElementById('valRad').textContent=Math.ceil(player.rad);
+  document.getElementById('lvNum').textContent=player.level;
+  const xpPct = player.level>=50 ? 100 : (player.xp/XP_TABLE[player.level]*100);
+  document.getElementById('xpFill').style.width=xpPct+'%';
+  
+  // Time
+  const h=Math.floor(G.time/60)%24, m=Math.floor(G.time%60);
+  document.getElementById('gameTime').textContent=`${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}`;
+  document.getElementById('dayDisplay').textContent=`DAY ${G.day}`;
+  const weatherIcons={clear:'☀ CLEAR',rain:'🌧 RAIN',fog:'🌫 FOG',storm:'⛈ STORM',radiation:'☢ RAD STORM',night:'🌙 NIGHT'};
+  const isDark = h >= 20 || h < 6;
+  document.getElementById('weatherDisplay').textContent=isDark?'🌙 NIGHT':(weatherIcons[G.weather]||'☀ CLEAR');
+  
+  // Hotbar
+  for(let i=0;i<5;i++) {
+    const slot=player.hotbar[i];
+    const emoji=document.getElementById('hs'+i);
+    const name=document.getElementById('hn'+i);
+    if(slot&&ITEMS[slot.id]){
+      emoji.textContent=ITEMS[slot.id].emoji;
+      name.textContent=ITEMS[slot.id].name;
+      const slotEl=document.getElementById('slot'+i);
+      slotEl.style.opacity='1';
+    } else {
+      if(emoji) emoji.textContent='';
+      if(name) name.textContent='empty';
+    }
+    document.getElementById('slot'+i)?.classList.toggle('active',i===player.activeSlot);
+  }
+}
+
+function selectHotslot(i) { player.activeSlot=i; updateHUD(); }
+
+function notify(msg,type='') {
+  const n=document.getElementById('notifications');
+  const div=document.createElement('div');
+  div.className='notif notif-'+type;
+  div.textContent=msg;
+  n.appendChild(div);
+  setTimeout(()=>div.remove(),3200);
+}
+
+function showHitFlash() {
+  const f=document.getElementById('hitFlash');
+  f.style.opacity='1';
+  setTimeout(()=>f.style.opacity='0',120);
+}
+function flashHit() {
+  const f=document.getElementById('hitFlash');
+  f.style.opacity='.5';
+  setTimeout(()=>f.style.opacity='0',80);
+}
+function lootFlash() {
+  const f=document.getElementById('lootFlash');
+  f.style.opacity='1';
+  setTimeout(()=>f.style.opacity='0',150);
+}
+
+// ============================================================
+// PANEL RENDERING
+// ============================================================
+let currentInvTab='all', currentCraftTab='weapons', currentQuestTab='active';
+
+function openPanel(id) {
+  if(G.panelOpen) document.getElementById(G.panelOpen)?.classList.remove('open');
+  G.panelOpen=id;
+  document.getElementById(id).classList.add('open');
+  if(id==='inventoryPanel') renderInventory('all');
+  if(id==='craftPanel') renderCraftPanel('weapons');
+  if(id==='mapPanel') renderMap();
+  if(id==='questPanel') renderQuests('active');
+  if(id==='bunkerPanel') renderBunker();
+}
+
+function closePanel(id) {
+  document.getElementById(id).classList.remove('open');
+  G.panelOpen=null;
+}
+
+function invTab(tab) {
+  currentInvTab=tab;
+  document.querySelectorAll('#inventoryPanel .tab-btn').forEach((b,i)=>{
+    b.classList.toggle('active',['all','weapons','food','meds','materials'][i]===tab);
+  });
+  renderInventory(tab);
+}
+
+function renderInventory(filter) {
+  currentInvTab=filter;
+  const grid=document.getElementById('invGrid');
+  const allItems=[...player.inventory];
+  const filtered=filter==='all'?allItems:allItems.filter(i=>ITEMS[i.id]?.cat===filter);
+  
+  grid.innerHTML = filtered.length===0 ? '<p style="color:#555;font-size:11px;padding:10px">No items in this category.</p>' :
+    filtered.map(item=>{
+      const def=ITEMS[item.id];
+      if(!def) return '';
+      return `<div class="inv-slot" onclick="useItemFromInv('${item.id}')">
+        <span class="item-emoji">${def.emoji}</span>
+        <span class="item-name">${def.name}</span>
+        <span class="item-qty">x${item.qty}</span>
+        <div class="item-rarity rarity-${item.rarity||def.rarity}"></div>
+      </div>`;
+    }).join('');
+}
+
+function useItemFromInv(id) {
+  const def = ITEMS[id];
+  if(!def) return;
+  if(def.type==='food'||def.type==='drink'||def.type==='med') {
+    if(def.hunger) player.hunger=Math.min(100,player.hunger+def.hunger);
+    if(def.thirst) player.thirst=Math.min(100,player.thirst+def.thirst);
+    if(def.heal) player.hp=Math.min(player.maxHp,player.hp+def.heal);
+    if(def.rad) player.rad=Math.max(0,player.rad+def.rad);
+    removeItem(id,1);
+    notify(`Used ${def.name}`,'good');
+    renderInventory(currentInvTab);
+    updateHUD();
+  } else {
+    // Equip to hotbar
+    const emptySlot = player.hotbar.findIndex(s=>!s||!s.id);
+    if(emptySlot>=0) {
+      player.hotbar[emptySlot]={id,qty:countItem(id)};
+      removeItem(id,countItem(id));
+      notify(`${def.name} equipped to slot ${emptySlot+1}`,'good');
+      renderInventory(currentInvTab);
+      updateHUD();
+    } else notify('Hotbar full! Unequip something first.','warn');
+  }
+}
+
+function craftTab(tab) {
+  currentCraftTab=tab;
+  document.querySelectorAll('#craftPanel .tab-btn').forEach((b,i)=>{
+    b.classList.toggle('active',['weapons','armor','food','meds','ammo'][i]===tab);
+  });
+  renderCraftPanel(tab);
+}
+
+function renderCraftPanel(tab) {
+  const body=document.getElementById('craftBody');
+  const recipes=RECIPES[tab]||[];
+  body.innerHTML=recipes.map(r=>{
+    const locked=player.level<r.minLvl;
+    const reqHtml=Object.entries(r.req).map(([id,qty])=>{
+      const has=hasItem(id,qty);
+      const have=countItem(id);
+      return `<span class="${has?'has':'lacks'}">${ITEMS[id]?.emoji||'?'} ${ITEMS[id]?.name||id}: ${have}/${qty}</span>`;
+    }).join(' &nbsp;');
+    const canDo=canCraft(r);
+    return `<div class="craft-item ${locked?'locked':''}">
+      <span class="craft-icon">${r.emoji}</span>
+      <div class="craft-info">
+        <div class="craft-name">${r.name}${locked?` <span style="color:#555;font-size:8px">[LVL ${r.minLvl}]</span>`:''}</div>
+        <div class="craft-reqs">${reqHtml}</div>
+      </div>
+      <button class="craft-btn" ${canDo?'':'disabled'} onclick="doCraft(RECIPES['${tab}'][${recipes.indexOf(r)}])">CRAFT</button>
+    </div>`;
+  }).join('') || '<p style="color:#555;font-size:11px;padding:10px">No recipes available yet.</p>';
+}
+
+function renderMap() {
+  const c=document.getElementById('mapCanvas');
+  const body=c.parentElement;
+  c.width=body.offsetWidth||window.innerWidth;
+  c.height=Math.min(body.offsetHeight||400, window.innerHeight-180);
+  const ctx=c.getContext('2d');
+  const scale=c.width/WORLD_W;
+  
+  ctx.fillStyle='#0a0a0a';
+  ctx.fillRect(0,0,c.width,c.height);
+  
+  // Draw terrain overview
+  for(const s of G.settlements) {
+    const sx=s.x*scale, sy=s.y*scale;
+    const color = s.controlled==='player'?'#4299e1':s.controlled==='raiders'?'#9f7aea':
+      s.type==='military'?'#e53e3e':s.type==='bunker'?'#48bb78':
+      s.type==='city'?'#888':s.type==='vault'?'#9f7aea':'#555';
+    ctx.fillStyle=color+'33';
+    ctx.beginPath();
+    ctx.arc(sx,sy,s.size*scale/TILE/2*1.5,0,Math.PI*2);
+    ctx.fill();
+    ctx.strokeStyle=color;
+    ctx.lineWidth=1;
+    ctx.stroke();
+    // Label
+    ctx.fillStyle=color;
+    ctx.font=`${Math.max(8,10*scale*20)}px Courier New`;
+    ctx.textAlign='center';
+    ctx.fillText(s.name,sx,sy-s.size*scale/TILE/2*1.5-3);
+    
+    // Settlement health bar
+    ctx.fillStyle='#222';
+    ctx.fillRect(sx-15,sy+s.size*scale/TILE/2*1.5+2,30,3);
+    ctx.fillStyle=s.health>60?'#48bb78':s.health>30?'#ed8936':'#e53e3e';
+    ctx.fillRect(sx-15,sy+s.size*scale/TILE/2*1.5+2,30*s.health/100,3);
+  }
+  
+  // Roads
+  ctx.strokeStyle='#333';
+  ctx.lineWidth=1.5;
+  const roadYs=[8,25,50,75,90];
+  const roadXs=[8,25,50,75,90];
+  for(const ry of roadYs) { ctx.beginPath();ctx.moveTo(0,ry/100*c.height);ctx.lineTo(c.width,ry/100*c.height);ctx.stroke(); }
+  for(const rx of roadXs) { ctx.beginPath();ctx.moveTo(rx/100*c.width,0);ctx.lineTo(rx/100*c.width,c.height);ctx.stroke(); }
+  
+  // Player
+  const px=player.x*scale, py=player.y*scale;
+  ctx.fillStyle='#ff4400';
+  ctx.beginPath();ctx.arc(px,py,5,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='#ff6600';ctx.lineWidth=1;ctx.stroke();
+  
+  // Reputation display
+  ctx.fillStyle='#555';
+  ctx.font='10px Courier New';
+  ctx.textAlign='left';
+  ctx.fillText(`REP: ${G.worldReputation > 0?'+':''}${G.worldReputation} | Day ${G.day}`,6,14);
+}
+
+function questTab(tab) {
+  currentQuestTab=tab;
+  document.querySelectorAll('#questPanel .tab-btn').forEach((b,i)=>{
+    b.classList.toggle('active',['active','daily','completed'][i]===tab);
+  });
+  renderQuests(tab);
+}
+
+function renderQuests(tab) {
+  const body=document.getElementById('questBody');
+  const list = tab==='active'?quests.active:tab==='daily'?quests.daily:quests.completed;
+  body.innerHTML = list.length===0 ? '<p style="color:#555;font-size:11px;padding:10px">No quests here.</p>' :
+    list.map(q=>`<div class="quest-item">
+      <span class="quest-type qt-${q.type}">${q.type.toUpperCase()}</span>
+      <div class="quest-title">${q.title}</div>
+      <div class="quest-desc">${q.desc}</div>
+      <div class="quest-reward">🏆 ${q.reward}</div>
+      <div class="quest-progress"><div class="quest-prog-fill" style="width:${q.goal>0?Math.min(100,q.progress/q.goal*100):100}%"></div></div>
+      <div style="font-size:8px;color:#555;margin-top:3px">${q.progress}/${q.goal}</div>
+    </div>`).join('');
+}
+
+function renderBunker() {
+  const body=document.getElementById('bunkerBody');
+  const b=player.bunker;
+  const modules=[
+    {key:'storage',  icon:'📦',name:'Storage Room',     desc:'Increases max carry weight'},
+    {key:'workbench',icon:'🔨',name:'Crafting Bench',   desc:'Enables advanced crafting'},
+    {key:'medical',  icon:'💊',name:'Medical Station',  desc:'Accelerates HP recovery'},
+    {key:'generator',icon:'⚡',name:'Generator',        desc:'Powers base modules'},
+    {key:'farm',     icon:'🌱',name:'Farm',             desc:'Produces food over time'},
+    {key:'purifier', icon:'💧',name:'Water Purifier',   desc:'Produces clean water'},
+  ];
+  
+  body.innerHTML = `<div style="padding:10px;border-bottom:1px solid #1a1a1a;margin-bottom:8px;font-size:10px;color:#666">
+    <span style="color:#ff4400">REP: ${G.worldReputation > 0?'+':''}${G.worldReputation}</span> &nbsp;|&nbsp; 
+    <span style="color:#4299e1">Controls: ${G.settlements.filter(s=>s.controlled==='player').length} settlements</span> &nbsp;|&nbsp;
+    <span style="color:#9f7aea">Raider-held: ${G.settlements.filter(s=>s.controlled==='raiders').length}</span>
+  </div>` +
+  modules.map(m=>{
+    const mod=b[m.key];
+    const costStr=Object.entries(mod.cost).map(([id,qty])=>`${ITEMS[id]?.emoji}${qty}`).join(' ');
+    const canUpgrade=mod.level<mod.maxLvl&&Object.entries(mod.cost).every(([id,qty])=>hasItem(id,qty));
+    return `<div class="bunker-upgrade">
+      <span class="bunker-icon">${m.icon}</span>
+      <div class="bunker-info">
+        <div class="bunker-name">${m.name}</div>
+        <div class="bunker-level">Level ${mod.level}/${mod.maxLvl} — ${m.desc}</div>
+        <div style="font-size:9px;color:#444;margin-top:2px">Cost: ${costStr}</div>
+      </div>
+      <button class="upgrade-btn" ${canUpgrade?'':'disabled'} onclick="upgradeBunker('${m.key}')">UPGRADE</button>
+    </div>`;
+  }).join('');
+}
+
+function upgradeBunker(key) {
+  const mod=player.bunker[key];
+  if(mod.level>=mod.maxLvl) return;
+  Object.entries(mod.cost).forEach(([id,qty])=>removeItem(id,qty));
+  mod.level++;
+  addXP(50);
+  notify(`${key} upgraded to level ${mod.level}!`,'good');
+  renderBunker();
+}
+
+// ============================================================
+// INPUT HANDLING
+// ============================================================
+let keys={};
+let joystick={active:false,x:0,y:0,dx:0,dy:0};
+let attackHeld=false;
+
+document.addEventListener('keydown',e=>{
+  keys[e.key.toLowerCase()]=true;
+  if(e.key==='z'||e.key==='Z') attackHeld=true;
+  if(e.key==='x'||e.key==='X') tryLoot();
+  if(e.key==='e'||e.key==='E') useItem();
+  if(e.key==='i'||e.key==='I') G.panelOpen?closePanel(G.panelOpen):openPanel('inventoryPanel');
+  if(e.key==='c'||e.key==='C') G.panelOpen?closePanel(G.panelOpen):openPanel('craftPanel');
+  if(e.key==='m'||e.key==='M') G.panelOpen?closePanel(G.panelOpen):openPanel('mapPanel');
+  if(e.key==='q'||e.key==='Q') G.panelOpen?closePanel(G.panelOpen):openPanel('questPanel');
+  if(['1','2','3','4','5'].includes(e.key)) selectHotslot(parseInt(e.key)-1);
+  e.preventDefault();
+});
+document.addEventListener('keyup',e=>{
+  keys[e.key.toLowerCase()]=false;
+  if(e.key==='z'||e.key==='Z') attackHeld=false;
+});
+
+function handleAttackStart(){attackHeld=true;}
+function handleAttackEnd(){attackHeld=false;}
+
+// Joystick
+const joystickZone=document.getElementById('joystickZone');
+const joystickInner=document.getElementById('joystickInner');
+const outer=document.getElementById('joystickOuter');
+
+function joystickStart(e) {
+  const t=e.touches?e.touches[0]:e;
+  const rect=outer.getBoundingClientRect();
+  joystick.active=true;
+  joystick.x=rect.left+rect.width/2;
+  joystick.y=rect.top+rect.height/2;
+  joystickMove(e);
+}
+function joystickMove(e) {
+  if(!joystick.active) return;
+  const t=e.touches?e.touches[0]:e;
+  const dx=t.clientX-joystick.x, dy=t.clientY-joystick.y;
+  const dist=Math.sqrt(dx*dx+dy*dy);
+  const maxDist=42;
+  const cDist=Math.min(dist,maxDist);
+  const angle=Math.atan2(dy,dx);
+  joystick.dx=(dist>8?Math.cos(angle):0);
+  joystick.dy=(dist>8?Math.sin(angle):0);
+  joystickInner.style.transform=`translate(calc(-50% + ${Math.cos(angle)*cDist}px), calc(-50% + ${Math.sin(angle)*cDist}px))`;
+}
+function joystickEnd() {
+  joystick.active=false;joystick.dx=0;joystick.dy=0;
+  joystickInner.style.transform='translate(-50%,-50%)';
+}
+outer.addEventListener('touchstart',joystickStart,{passive:true});
+outer.addEventListener('touchmove',joystickMove,{passive:true});
+outer.addEventListener('touchend',joystickEnd,{passive:true});
+outer.addEventListener('mousedown',joystickStart);
+document.addEventListener('mousemove',e=>{if(joystick.active)joystickMove(e);});
+document.addEventListener('mouseup',joystickEnd);
+
+// ============================================================
+// CANVAS / RENDERING
+// ============================================================
+function resizeCanvas() {
+  canvas.width=window.innerWidth;
+  canvas.height=window.innerHeight;
+}
+window.addEventListener('resize',resizeCanvas);
+resizeCanvas();
+
+const VISIBLE_RANGE = 400;
+
+function renderGame() {
+  ctx.fillStyle='#0a0a0a';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  
+  const isDark = Math.floor(G.time/60)%24 >= 20 || Math.floor(G.time/60)%24 < 6;
+  const dusk   = Math.floor(G.time/60)%24 === 19 || Math.floor(G.time/60)%24 === 5;
+  
+  ctx.save();
+  // Camera transform
+  const cx=canvas.width/2 - player.x*cam.zoom;
+  const cy=canvas.height/2 - player.y*cam.zoom;
+  ctx.translate(cx,cy);
+  ctx.scale(cam.zoom,cam.zoom);
+  
+  // Visible tile range
+  const vpLeft = Math.floor((player.x - canvas.width/cam.zoom/2 - TILE) / TILE);
+  const vpTop  = Math.floor((player.y - canvas.height/cam.zoom/2 - TILE) / TILE);
+  const vpRight= Math.ceil((player.x + canvas.width/cam.zoom/2 + TILE) / TILE);
+  const vpBot  = Math.ceil((player.y + canvas.height/cam.zoom/2 + TILE) / TILE);
+  
+  // Draw tiles
+  for(let ty=Math.max(0,vpTop);ty<Math.min(ROWS,vpBot);ty++) {
+    for(let tx=Math.max(0,vpLeft);tx<Math.min(COLS,vpRight);tx++) {
+      const t=worldMap[ty*COLS+tx];
+      ctx.fillStyle=TILE_COLORS[t]||'#111';
+      ctx.fillRect(tx*TILE,ty*TILE,TILE,TILE);
+      // Visual detail
+      if(t===T.ROAD) {
+        ctx.fillStyle='rgba(255,255,255,.03)';
+        ctx.fillRect(tx*TILE+TILE/2-1,ty*TILE,2,TILE);
+      }
+      if(t===T.RUIN) {
+        ctx.fillStyle='#2a2a20';
+        ctx.fillRect(tx*TILE+2,ty*TILE+2,TILE-4,TILE-4);
+        ctx.fillStyle='#333';
+        ctx.fillRect(tx*TILE+4,ty*TILE+4,TILE/3,TILE/3);
+      }
+      if(t===T.TREE) {
+        ctx.fillStyle='#0a1a0a';
+        ctx.beginPath();
+        ctx.arc(tx*TILE+TILE/2,ty*TILE+TILE/2,TILE/2-3,0,Math.PI*2);
+        ctx.fill();
+        ctx.fillStyle='#0d200d';
+        ctx.beginPath();
+        ctx.arc(tx*TILE+TILE/2-2,ty*TILE+TILE/2-2,TILE/3,0,Math.PI*2);
+        ctx.fill();
+      }
+      if(t===T.WATER) {
+        const wave=Math.sin(G.frameCount*.02+tx*0.5+ty*0.3)*2;
+        ctx.fillStyle=`rgba(10,26,42,${0.3+wave*.1})`;
+        ctx.fillRect(tx*TILE,ty*TILE,TILE,TILE/2+wave);
+      }
+      if(t===T.RADIOACTIVE) {
+        ctx.fillStyle='rgba(159,122,234,.1)';
+        ctx.fillRect(tx*TILE,ty*TILE,TILE,TILE);
+        if(G.frameCount%60<30) {
+          ctx.fillStyle='rgba(159,122,234,.2)';
+          ctx.font='8px sans-serif';
+          ctx.textAlign='center';
+          ctx.fillText('☢',tx*TILE+TILE/2,ty*TILE+TILE/2+3);
+        }
+      }
+    }
+  }
+  
+  // Draw containers
+  for(const c of containers) {
+    if(c.looted && Date.now()<c.respawn) continue;
+    const dx=c.x-player.x,dy=c.y-player.y;
+    if(Math.abs(dx)>VISIBLE_RANGE||Math.abs(dy)>VISIBLE_RANGE) continue;
+    const icons={locker:'🗄',toolbox:'🧰',crate:'📦',car:'🚗',safe:'🔒'};
+    ctx.font=c.looted?'12px sans-serif':'14px sans-serif';
+    ctx.globalAlpha=c.looted?0.3:1;
+    ctx.textAlign='center';
+    ctx.fillText(icons[c.type]||'📦',c.x,c.y+5);
+    if(!c.looted) {
+      // Loot indicator pulse
+      const pulse=Math.sin(G.frameCount*.1)*3;
+      ctx.globalAlpha=0.4;
+      ctx.strokeStyle='#f6e05e';
+      ctx.lineWidth=1;
+      ctx.beginPath();
+      ctx.arc(c.x,c.y-6,6+pulse,0,Math.PI*2);
+      ctx.stroke();
+    }
+    ctx.globalAlpha=1;
+  }
+  
+  // Draw enemies
+  for(const e of entities) {
+    if(e.dead) {
+      ctx.globalAlpha=0.3;
+      ctx.font='14px sans-serif';
+      ctx.textAlign='center';
+      ctx.fillText(e.emoji,e.x,e.y+5);
+      ctx.globalAlpha=1;
+      continue;
+    }
+    const dx=e.x-player.x,dy=e.y-player.y;
+    if(Math.abs(dx)>VISIBLE_RANGE+50||Math.abs(dy)>VISIBLE_RANGE+50) continue;
+    
+    // Enemy body
+    ctx.fillStyle=e.color;
+    ctx.beginPath();
+    ctx.arc(e.x,e.y,e.size,0,Math.PI*2);
+    ctx.fill();
+    // Enemy emoji
+    ctx.font=`${e.size+4}px sans-serif`;
+    ctx.textAlign='center';
+    ctx.fillText(e.emoji,e.x,e.y+(e.size*.4));
+    
+    // HP bar
+    const bw=e.size*2.5;
+    ctx.fillStyle='#1a1a1a';
+    ctx.fillRect(e.x-bw/2,e.y-e.size-7,bw,3);
+    ctx.fillStyle=e.hp/e.maxHp>0.5?'#48bb78':'#e53e3e';
+    ctx.fillRect(e.x-bw/2,e.y-e.size-7,bw*(e.hp/e.maxHp),3);
+    
+    // Alert indicator
+    if(e.state==='chase') {
+      ctx.fillStyle='#e53e3e';
+      ctx.font='8px sans-serif';
+      ctx.fillText('!',e.x,e.y-e.size-10);
+    }
+  }
+  
+  // Particles
+  for(const p of particles) {
+    ctx.globalAlpha=p.life;
+    ctx.fillStyle=p.color;
+    ctx.beginPath();
+    ctx.arc(p.x,p.y,p.size*p.life,0,Math.PI*2);
+    ctx.fill();
+  }
+  ctx.globalAlpha=1;
+  
+  // Settlement labels (location names)
+  for(const s of G.settlements) {
+    const dx=s.x-player.x,dy=s.y-player.y;
+    if(Math.abs(dx)>VISIBLE_RANGE*1.5||Math.abs(dy)>VISIBLE_RANGE*1.5) continue;
+    const typeIcons={city:'🏙',town:'🏘',military:'🪖',factory:'🏭',bunker:'🏚',gas:'⛽',forest:'🌲',swamp:'🌿',vault:'🔐'};
+    ctx.font='10px Courier New';
+    ctx.textAlign='center';
+    ctx.fillStyle=s.controlled==='player'?'#4299e1':s.controlled==='raiders'?'#9f7aea':'#888';
+    ctx.fillText(`${typeIcons[s.type]||'📍'} ${s.name}`,s.x,s.y-s.size/2-4);
+  }
+  
+  // Player
+  const pw=12;
+  // Player shadow
+  ctx.fillStyle='rgba(0,0,0,.4)';
+  ctx.beginPath();
+  ctx.ellipse(player.x,player.y+pw,pw*.7,4,0,0,Math.PI*2);
+  ctx.fill();
+  // Player body
+  ctx.fillStyle='#c4a35a';
+  ctx.beginPath();
+  ctx.arc(player.x,player.y,pw,0,Math.PI*2);
+  ctx.fill();
+  ctx.strokeStyle='#ff4400';
+  ctx.lineWidth=2;
+  ctx.stroke();
+  // Direction indicator
+  ctx.strokeStyle='#fff';
+  ctx.lineWidth=1.5;
+  ctx.beginPath();
+  ctx.moveTo(player.x,player.y);
+  ctx.lineTo(player.x+Math.cos(player.dir)*18,player.y+Math.sin(player.dir)*18);
+  ctx.stroke();
+  
+  // Bunker marker
+  const bx=player.bunker.x,by=player.bunker.y;
+  const bDist=Math.sqrt((player.x-bx)**2+(player.y-by)**2);
+  if(bDist < VISIBLE_RANGE) {
+    ctx.font='16px sans-serif';
+    ctx.textAlign='center';
+    ctx.fillText('🏚',bx,by+5);
+    ctx.font='9px Courier New';
+    ctx.fillStyle='#48bb78';
+    ctx.fillText('BASE',bx,by-12);
+  }
+  
+  // Night overlay
+  if(isDark||dusk) {
+    const darkness=isDark?0.55:0.25;
+    const grad=ctx.createRadialGradient(player.x,player.y,30,player.x,player.y,200);
+    grad.addColorStop(0,'rgba(0,0,0,0)');
+    grad.addColorStop(1,`rgba(0,0,${30},${darkness})`);
+    ctx.fillStyle=grad;
+    ctx.fillRect(player.x-400,player.y-400,800,800);
+  }
+  
+  // Weather effects
+  if(G.weather==='rain') {
+    ctx.strokeStyle='rgba(66,153,225,.25)';
+    ctx.lineWidth=1;
+    for(let i=0;i<30;i++) {
+      const rx=player.x-200+Math.random()*400+G.frameCount*2%400;
+      const ry=player.y-200+Math.random()*400;
+      ctx.beginPath();ctx.moveTo(rx,ry);ctx.lineTo(rx-3,ry+8);ctx.stroke();
+    }
+  }
+  if(G.weather==='radiation') {
+    ctx.fillStyle='rgba(159,122,234,.05)';
+    ctx.fillRect(player.x-400,player.y-400,800,800);
+    player.rad = Math.min(100, player.rad + 0.01);
+  }
+  
+  ctx.restore();
+  
+  // Compass
+  renderCompass();
+}
+
+function renderCompass() {
+  const cx2=canvas.width-20,cy2=canvas.height/2;
+  ctx.fillStyle='rgba(0,0,0,.5)';
+  ctx.fillRect(cx2-12,cy2-40,24,80);
+  ctx.strokeStyle='rgba(255,255,255,.3)';
+  ctx.lineWidth=.5;
+  ctx.strokeRect(cx2-12,cy2-40,24,80);
+  ctx.font='8px Courier New';
+  ctx.textAlign='center';
+  ctx.fillStyle='#e53e3e';
+  ctx.fillText('N',cx2,cy2-26);
+  ctx.fillStyle='#555';
+  ctx.fillText('S',cx2,cy2+34);
+  ctx.fillText('W',cx2,cy2+4);
+  ctx.fillText('E',cx2,cy2+4);
+  // Player dot
+  ctx.fillStyle='#ff4400';
+  ctx.beginPath();ctx.arc(cx2,cy2,3,0,Math.PI*2);ctx.fill();
+}
+
+// ============================================================
+// ENEMY AI
+// ============================================================
+function updateEnemies(dt) {
+  const now = G.frameCount;
+  entities = entities.filter(e=>!e.dead||e.deathTimer>0);
+  
+  for(const e of entities) {
+    if(e.dead) { e.deathTimer=(e.deathTimer||0)-1; continue; }
+    if(e.attackTimer>0) e.attackTimer--;
+    
+    const dx=player.x-e.x, dy=player.y-e.y;
+    const dist=Math.sqrt(dx*dx+dy*dy);
+    const detectRange = e.ranged ? 200 : 100;
+    const attackRange = e.ranged ? (e.range||150) : (e.size+12);
+    
+    if(dist < detectRange) {
+      e.state='chase';
+      e.alertTimer=200;
+    } else if(e.alertTimer>0) {
+      e.alertTimer--;
+      if(e.alertTimer<=0) e.state='patrol';
+    }
+    
+    if(e.state==='chase') {
+      if(dist > attackRange) {
+        const spd=e.speed*(G.weather==='rain'?.8:1);
+        e.vx=dx/dist*spd;
+        e.vy=dy/dist*spd;
+      } else {
+        e.vx*=0.8;e.vy*=0.8;
+        if(!player.isDead) enemyAttackPlayer(e);
+      }
+    } else {
+      // Patrol
+      const pdx=e.patrolX-e.x, pdy=e.patrolY-e.y;
+      const pd=Math.sqrt(pdx*pdx+pdy*pdy);
+      if(pd < 5) {
+        e.patrolX=e.x+(Math.random()-.5)*80;
+        e.patrolY=e.y+(Math.random()-.5)*80;
+      } else {
+        e.vx=pdx/pd*e.speed*0.4;
+        e.vy=pdy/pd*e.speed*0.4;
+      }
+    }
+    
+    e.x+=e.vx;
+    e.y+=e.vy;
+    e.x=Math.max(0,Math.min(WORLD_W,e.x));
+    e.y=Math.max(0,Math.min(WORLD_H,e.y));
+  }
+}
+
+// ============================================================
+// PLAYER MOVEMENT
+// ============================================================
+function updatePlayer(dt) {
+  if(player.isDead) return;
+  
+  let dx=0,dy=0;
+  if(keys['arrowleft']||keys['a']) dx=-1;
+  if(keys['arrowright']||keys['d']) dx=1;
+  if(keys['arrowup']||keys['w']) dy=-1;
+  if(keys['arrowdown']||keys['s']) dy=1;
+  if(joystick.active){dx=joystick.dx;dy=joystick.dy;}
+  
+  const running = (keys['shift']||keys['run'])&&player.stamina>5;
+  const speed = player.speed * (running?1.7:1) * (player.stamina<20?.7:1);
+  
+  if(dx!==0||dy!==0) {
+    const mag=Math.sqrt(dx*dx+dy*dy);
+    player.vx=dx/mag*speed;
+    player.vy=dy/mag*speed;
+    player.dir=Math.atan2(dy,dx);
+  } else {
+    player.vx*=0.7;
+    player.vy*=0.7;
+  }
+  
+  // Collision
+  const nx=player.x+player.vx, ny=player.y+player.vy;
+  const tx=Math.floor(nx/TILE), ty=Math.floor(ny/TILE);
+  const blocked = t=>t===T.WALL||t===T.WATER;
+  if(tx>=0&&tx<COLS&&ty>=0&&ty<ROWS&&!blocked(worldMap[ty*COLS+tx])) {
+    player.x=nx; player.y=ny;
+  } else {
+    // Try sliding
+    const tx2=Math.floor((player.x+player.vx)/TILE), ty2=Math.floor(player.y/TILE);
+    if(tx2>=0&&tx2<COLS&&ty2>=0&&ty2<ROWS&&!blocked(worldMap[ty2*COLS+tx2])) player.x+=player.vx;
+    const tx3=Math.floor(player.x/TILE), ty3=Math.floor((player.y+player.vy)/TILE);
+    if(tx3>=0&&tx3<COLS&&ty3>=0&&ty3<ROWS&&!blocked(worldMap[ty3*COLS+tx3])) player.y+=player.vy;
+  }
+  
+  player.x=Math.max(0,Math.min(WORLD_W,player.x));
+  player.y=Math.max(0,Math.min(WORLD_H,player.y));
+  
+  if(player.attackCooldown>0) player.attackCooldown--;
+  if(attackHeld) playerAttack();
+}
+
+// ============================================================
+// GAME TIME / WEATHER
+// ============================================================
+function updateWorldTime(dt) {
+  G.time += dt * 0.03; // 1 real second = ~2 game minutes
+  if(G.time >= 1440) {
+    G.time -= 1440;
+    G.day++;
+    // New day resets daily quests
+    quests.daily.forEach(q=>{ q.progress=0; q.complete=false; });
+    if(player.bunker.farm.level>0) { addToInventory('canned_food',player.bunker.farm.level); notify('Farm harvested food!','good'); }
+    if(player.bunker.purifier.level>0) { addToInventory('water_bottle',player.bunker.purifier.level); notify('Purifier produced water!','good'); }
+  }
+  
+  G.weatherTimer--;
+  if(G.weatherTimer <= 0) {
+    const weathers=['clear','clear','clear','rain','fog','storm','clear','radiation'];
+    G.weather=weathers[randInt(0,weathers.length-1)];
+    G.weatherTimer = randInt(400,1200);
+  }
+  
+  G.eventTimer--;
+  if(G.eventTimer <= 0 && !G.panelOpen) {
+    G.eventTimer = randInt(800,2000);
+    if(Math.random()<0.6) triggerWorldEvent();
+  }
+  
+  // Periodic enemy respawn
+  if(G.frameCount%1800===0) {
+    const livingCount = entities.filter(e=>!e.dead).length;
+    if(livingCount < 40) {
+      for(let i=0;i<randInt(3,8);i++) {
+        const s = G.settlements[randInt(0,G.settlements.length-1)];
+        const angle=Math.random()*Math.PI*2;
+        const dist=50+Math.random()*100;
+        spawnEnemy(s.x+Math.cos(angle)*dist, s.y+Math.sin(angle)*dist, getZoneEnemyType(s.type));
+      }
+    }
+  }
+}
+
+// ============================================================
+// MAIN GAME LOOP
+// ============================================================
+let lastTime=0;
+function gameLoop(ts) {
+  if(!G.running) return;
+  const dt=Math.min((ts-lastTime)/16.67,3); lastTime=ts;
+  G.frameCount++;
+  
+  if(!G.paused) {
+    updatePlayer(dt);
+    updateEnemies(dt);
+    updateSurvivalStats(dt);
+    updateWorldTime(dt);
+    updateQuests();
+    
+    // Update particles
+    for(const p of particles) {
+      p.x+=p.vx; p.y+=p.vy;
+      p.life-=p.decay;
+      p.vx*=0.9; p.vy*=0.9;
+    }
+    particles=particles.filter(p=>p.life>0);
+    
+    // Auto-save
+    if(G.frameCount%600===0) autoSave();
+    
+    // Check location exploration
+    for(const s of G.settlements) {
+      const dx=player.x-s.x, dy=player.y-s.y;
+      if(Math.sqrt(dx*dx+dy*dy)<s.size&&!player.explored.has(s.name)) {
+        player.explored.add(s.name);
+        addXP(25);
+        notify(`🗺 Discovered: ${s.name}! +25XP`,'xp');
+      }
+    }
+  }
+  
+  if(!G.panelOpen) renderGame();
+  updateHUD();
+  requestAnimationFrame(gameLoop);
+}
+
+// ============================================================
+// SAVE / LOAD
+// ============================================================
+function autoSave() {
+  const save={
+    player:{
+      x:player.x,y:player.y,hp:player.hp,hunger:player.hunger,thirst:player.thirst,
+      stamina:player.stamina,rad:player.rad,level:player.level,xp:player.xp,
+      inventory:player.inventory,hotbar:player.hotbar,activeSlot:player.activeSlot,
+      kills:player.kills,reputation:player.reputation,explored:[...player.explored],
+      lootedContainers:[...player.lootedContainers],bunker:player.bunker,
+      maxHp:player.maxHp,maxStamina:player.maxStamina,armor:player.armor,damage:player.damage,
+    },
+    world:{time:G.time,day:G.day,weather:G.weather,worldReputation:G.worldReputation},
+    quests,
+  };
+  try { localStorage.setItem('wz_save',JSON.stringify(save)); } catch(e){}
+}
+
+function loadGame() {
+  try {
+    const raw=localStorage.getItem('wz_save');
+    if(!raw) { startGame(); return; }
+    const save=JSON.parse(raw);
+    Object.assign(player, save.player);
+    player.explored=new Set(save.player.explored);
+    player.lootedContainers=new Set(save.player.lootedContainers);
+    G.time=save.world.time;G.day=save.world.day;
+    G.weather=save.world.weather;G.worldReputation=save.world.worldReputation;
+    if(save.quests) Object.assign(quests,save.quests);
+    startGame(true);
+  } catch(e) { startGame(); }
+}
+
+function startGame(loaded=false) {
+  document.getElementById('titleScreen').style.display='none';
+  document.getElementById('hud').style.display='block';
+  if(!loaded) {
+    // Give starter inventory
+    player.inventory = [
+      {id:'scrap_metal',qty:5,rarity:'common'},
+      {id:'cloth',qty:4,rarity:'common'},
+      {id:'wood',qty:3,rarity:'common'},
+      {id:'water_bottle',qty:2,rarity:'common'},
+      {id:'canned_food',qty:2,rarity:'common'},
+      {id:'bandage',qty:2,rarity:'common'},
+      {id:'caps',qty:15,rarity:'common'},
+    ];
+  }
+  G.running=true;
+  G.eventTimer=500;
+  G.weatherTimer=600;
+  generateWorld();
+  notify('Welcome to WASTELAND ZERO. Survive.','warn');
+  setTimeout(()=>notify('TIP: Use WASD/Joystick to move, Z/Attack to fight, X/Loot to scavenge',''),2500);
+  requestAnimationFrame(gameLoop);
+}
+
+// ============================================================
+// TITLE SCREEN ANIMATION
+// ============================================================
+const bgCanvas=document.getElementById('bgCanvas');
+const bgCtx=bgCanvas.getContext('2d');
+let bgFrame=0;
+const bgParticles=[];
+for(let i=0;i<60;i++) bgParticles.push({x:Math.random()*window.innerWidth,y:Math.random()*window.innerHeight,vx:(Math.random()-.5)*.5,vy:(Math.random()-.5)*.5,size:1+Math.random()*2,opacity:Math.random()});
+
+function animateBg() {
+  bgCanvas.width=window.innerWidth;bgCanvas.height=window.innerHeight;
+  bgCtx.fillStyle='rgba(10,10,10,.15)';
+  bgCtx.fillRect(0,0,bgCanvas.width,bgCanvas.height);
+  bgFrame++;
+  for(const p of bgParticles) {
+    p.x+=p.vx;p.y+=p.vy;
+    if(p.x<0)p.x=bgCanvas.width;if(p.x>bgCanvas.width)p.x=0;
+    if(p.y<0)p.y=bgCanvas.height;if(p.y>bgCanvas.height)p.y=0;
+    p.opacity=0.3+Math.sin(bgFrame*.02+p.x*.01)*.2;
+    bgCtx.fillStyle=`rgba(255,68,0,${p.opacity})`;
+    bgCtx.beginPath();bgCtx.arc(p.x,p.y,p.size,0,Math.PI*2);bgCtx.fill();
+  }
+  // Scan lines
+  if(bgFrame%2===0) {
+    bgCtx.strokeStyle='rgba(255,68,0,.03)';bgCtx.lineWidth=1;
+    for(let y=0;y<bgCanvas.height;y+=4) {
+      bgCtx.beginPath();bgCtx.moveTo(0,y);bgCtx.lineTo(bgCanvas.width,y);bgCtx.stroke();
+    }
+  }
+  if(document.getElementById('titleScreen').style.display!=='none') requestAnimationFrame(animateBg);
+}
+animateBg();
+</script>
+</body>
+</html>
